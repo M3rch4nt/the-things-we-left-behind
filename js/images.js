@@ -40,16 +40,28 @@
   /* try candidate paths in order, first success wins.
      Uses fetch-HEAD existence checks so missing optional assets do not
      spam the console with 404s; falls back to direct Image probing
-     when fetch is unavailable (file://). */
+     when fetch is unavailable (file://).
+     Multiple callers may wait on the same key: every callback is
+     queued and flushed when the probe resolves. */
+  var waiters = {};   // key -> [cb, ...]
+
   function probe(paths, key, done) {
     if (IM.cache[key]) { done(IM.cache[key]); return; }
-    if (IM.probing[key]) return;              // already in flight
     if (IM.MAN === null) {                    // manifest still loading: try again shortly
       setTimeout(function () { probe(paths, key, done); }, 60);
       return;
     }
+    if (!waiters[key]) waiters[key] = [];
+    waiters[key].push(done);
+    if (IM.probing[key]) return;              // already in flight; it will flush the queue
     IM.probing[key] = true;
     var i = 0;
+    function resolve() {
+      delete IM.probing[key];
+      var ws = waiters[key] || [];
+      delete waiters[key];
+      for (var w = 0; w < ws.length; w++) ws[w](IM.cache[key]);
+    }
     function headCheck() {
       /* manifest is authoritative: exact path or confirmed absence.
          (Browsers log every probed 404 in the console, so silent
@@ -58,9 +70,9 @@
       if (IM.MAN) {
         var mp = IM.MAN[key];
         if (mp) { loadImg(mp); return; }
-        IM.cache[key] = 'fail'; delete IM.probing[key]; done(null); return;
+        IM.cache[key] = 'fail'; resolve(); return;
       }
-      if (i >= paths.length) { IM.cache[key] = 'fail'; delete IM.probing[key]; done(null); return; }
+      if (i >= paths.length) { IM.cache[key] = 'fail'; resolve(); return; }
       var url = paths[i];
       if (typeof fetch === 'function' && location.protocol !== 'file:') {
         fetch(url, { method: 'HEAD' }).then(function (res) {
@@ -73,9 +85,8 @@
     function loadImg(url) {
       var img = new Image();
       img.onload = function () {
-        delete IM.probing[key];
         IM.cache[key] = img;
-        done(img);
+        resolve();
       };
       img.onerror = function () { i++; headCheck(); };
       img.src = url;
@@ -148,6 +159,23 @@
   };
 
   /* ---------- public API ---------- */
+
+  /* preload a list of {key, base, file} probes; done() fires when every
+     image has resolved (loaded or confirmed absent). onEach fires with
+     the running count for progress display. */
+  IM.warm = function (list, done, onEach) {
+    var left = list.length;
+    if (!left) { if (done) done(); return; }
+    var cb = function () {
+      left--;
+      if (onEach) onEach(list.length - left);
+      if (left === 0 && done) done();
+    };
+    for (var i = 0; i < list.length; i++) {
+      probe(pathsFor(list[i].base, list[i].file), list[i].key, cb);
+    }
+  };
+
   /* portrait for dialogue boxes / archive header — auto-cropped square */
   IM.avatar = function (id) {
     var key = 'av:' + id;
@@ -186,6 +214,23 @@
     var dw = iw * s, dh = ih * s;
     ctx.save();
     ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    ctx.restore();
+    return true;
+  };
+
+  /* draw an image fully INSIDE a rect, aspect preserved, centred.
+     The presentation-stage equivalent of KEEP_ASPECT_CENTERED: the whole
+     frame stays visible — never cropped, never stretched. Empty margins
+     show the caller's backdrop fill (letterboxing). */
+  IM.drawContain = function (ctx, img, x, y, w, h) {
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return false;
+    var s = Math.min(w / iw, h / ih);
+    var dw = iw * s, dh = ih * s;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
     ctx.restore();
     return true;

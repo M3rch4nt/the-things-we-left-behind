@@ -52,7 +52,7 @@
     var ents = def.ents.slice();
     /* sort a copy so we can mark pit ranges in heights */
     ents.forEach(function (e) {
-      if (e.type === 'char') chars.push({ id: e.id, x: e.x, done: TL.discovered(e.id), t: rnd() * 1000 });
+      if (e.type === 'char') chars.push({ id: e.id, x: e.x, done: TL.discovered(e.id), t: rnd() * 1000, tag: e.tag || null });
       if (e.type === 'station') stations.push({ x: e.x });
       if (e.type === 'exit') exits.push({ x: e.x, dir: e.dir, to: e.to });
     });
@@ -488,6 +488,20 @@
         ctx.restore();
       }
       if (!c.done) TL.drawBeaconRing(ctx, cx, cy - 30, a.t + c.t);
+      /* era flag: a small year plate beside characters from another era
+         (e.g. Curiosity 2012 inside the 2008 Phoenix world, the 1965 relay) */
+      if (c.tag) {
+        var tw2 = c.tag.length * 7 + 14;
+        var fx = cx - tw2 / 2, fy = cy - 96;
+        ctx.fillStyle = 'rgba(6,14,18,0.82)';
+        ctx.fillRect(fx, fy, tw2, 16);
+        ctx.strokeStyle = 'rgba(216,178,90,0.7)';
+        ctx.strokeRect(fx + 0.5, fy + 0.5, tw2 - 1, 15);
+        TL.text(ctx, c.tag, cx, fy + 5, 6, '#d8b25a', 'center');
+        /* little flagpole down to the beacon */
+        ctx.fillStyle = 'rgba(216,178,90,0.45)';
+        ctx.fillRect(cx - 1, fy + 16, 2, 18);
+      }
     }
   };
 
@@ -496,11 +510,10 @@
     var list = {
       ares:      [{ f: 0.35, k: 'mesa' }, { f: 0.82, k: 'crater' }],
       gusev:     [{ f: 0.22, k: 'hills' }, { f: 0.72, k: 'mesa' }],
-      meridiani: [{ f: 0.3, k: 'crater' }, { f: 0.78, k: 'dune' }],
       chryse:    [{ f: 0.4, k: 'mesa' }, { f: 0.82, k: 'dune' }],
-      utopia:    [{ f: 0.28, k: 'bowl' }, { f: 0.75, k: 'mesa' }],
       boreal:    [{ f: 0.35, k: 'mesa' }, { f: 0.8, k: 'bowl' }],
-      relay:     [{ f: 0.5, k: 'spire' }]
+      elysium:   [{ f: 0.45, k: 'mesa' }],
+      jezero:    [{ f: 0.3, k: 'mesa' }, { f: 0.9, k: 'spire' }]
     }[a.def.id] || [];
     var span = a.w * 0.25 + TL.W - 460;
     for (var i = 0; i < list.length; i++) {

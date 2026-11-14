@@ -153,20 +153,127 @@ window.TL = window.TL || {};
   TL.discovered = function (id) { return TL.has(TL.S.discoveries, id); };
   TL.discCount = function () { return TL.S.discoveries.length; };
 
-  /* ---------- toast / log ---------- */
-  TL.toasts = [];
-  TL.toast = function (text, color) {
-    TL.toasts.push({ text: text, t: 0, color: color || '#7ef0c8' });
-    if (TL.toasts.length > 4) TL.toasts.shift();
+  /* ---------- notification system ----------
+     Two strictly separated UI zones so popups never overlap:
+       STATUS zone — compact mini-cards tucked into the TOP-RIGHT corner.
+                     Minor updates, pickups, meter changes. Short-lived.
+       STORY zone  — centered, slow, elegant narrative beats and
+                     location markers. One at a time, queued, never stacked.
+     Each zone owns its own screen region exclusively; a dialogue box
+     (bottom strip) is the third zone and is exclusive by itself. */
+  TL.Notify = {
+    statusQ: [],   /* {text, color, t} */
+    storyQ: [],    /* {text?, def?, t} */
+    cur: null,     /* current story item (one at a time) */
+    STATUS_LIFE: 3.2,
+    STORY_LIFE: 5.2,
+    LOC_LIFE: 3.6,
+    status: function (text, color) {
+      var q = TL.Notify.statusQ;
+      q.push({ text: text, color: color || '#7ef0c8', t: 0 });
+      if (q.length > 4) q.shift();
+    },
+    story: function (text) {
+      TL.Notify.storyQ.push({ text: text });
+    },
+    loc: function (def) {
+      TL.Notify.storyQ.push({ def: def });
+    },
+    update: function (dt) {
+      var N = TL.Notify, i;
+      for (i = 0; i < N.statusQ.length; i++) {
+        N.statusQ[i].t += dt;
+        if (N.statusQ[i].t > N.STATUS_LIFE) { N.statusQ.splice(i, 1); i--; }
+      }
+      if (!N.cur && N.storyQ.length) { N.cur = N.storyQ.shift(); N.cur.t = 0; }
+      if (N.cur) {
+        N.cur.t += dt;
+        var life = N.cur.def ? N.LOC_LIFE : N.STORY_LIFE;
+        if (N.cur.t > life) N.cur = null;
+      }
+    },
+    drawStatus: function (ctx) {
+      var N = TL.Notify, y = 14;
+      for (var i = 0; i < N.statusQ.length; i++) {
+        var s = N.statusQ[i];
+        /* slide in from the right edge, ease-out */
+        var e = Math.min(1, s.t / 0.35);
+        e = 1 - Math.pow(1 - e, 3);
+        var out = s.t > N.STATUS_LIFE - 0.4 ? (s.t - (N.STATUS_LIFE - 0.4)) / 0.4 : 0;
+        var alpha = (1 - out) * Math.min(1, s.t / 0.2);
+        if (alpha <= 0) continue;
+        var lines = TL.wrap(ctx, s.text, 216, 7);
+        var h = lines.length * 13 + 14;
+        var x = TL.W - 12 - 244 + (1 - e) * 260;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        /* sleek semi-transparent card, one clean border */
+        ctx.fillStyle = 'rgba(6,16,20,0.86)';
+        ctx.fillRect(x, y, 244, h);
+        ctx.strokeStyle = 'rgba(110,220,200,0.28)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, 243, h - 1);
+        ctx.fillStyle = s.color;
+        ctx.fillRect(x, y, 3, h);
+        for (var L = 0; L < lines.length; L++) {
+          TL.text(ctx, lines[L], x + 12, y + 8 + L * 13, 7, s.color, 'left', 0.95);
+        }
+        ctx.restore();
+        y += h + 6;
+      }
+    },
+    drawStory: function (ctx) {
+      var N = TL.Notify, it = N.cur;
+      if (!it) return;
+      var fadeIn = Math.min(1, it.t / 0.8);          /* slow, elegant */
+      var life = it.def ? N.LOC_LIFE : N.STORY_LIFE;
+      var fadeOut = it.t > life - 0.7 ? Math.max(0, 1 - (it.t - (life - 0.7)) / 0.7) : 1;
+      var alpha = fadeIn * fadeOut;
+      if (alpha <= 0) return;
+      var y = 132 + (1 - Math.min(1, it.t / 0.8)) * 10;  /* gentle rise */
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      if (it.def) {
+        /* location marker: year, rule, region, sub */
+        TL.text(ctx, it.def.year, TL.W / 2, y, 17, '#d8b25a', 'center');
+        ctx.fillStyle = 'rgba(216,178,90,0.4)';
+        ctx.fillRect(TL.W / 2 - 70, y + 24, 140, 1);
+        TL.text(ctx, it.def.region, TL.W / 2, y + 34, 9, '#9fe8d8', 'center');
+        if (it.def.sub) TL.text(ctx, it.def.sub, TL.W / 2, y + 54, 7, '#7ab8a8', 'center', 0.85);
+      } else {
+        var lines = TL.wrap(ctx, it.text, 580, 9);
+        var h = lines.length * 18 + 22;
+        ctx.fillStyle = 'rgba(4,14,18,0.82)';
+        ctx.fillRect(TL.W / 2 - 310, y - 14, 620, h);
+        ctx.strokeStyle = 'rgba(216,178,90,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(TL.W / 2 - 309.5, y - 13.5, 619, h - 1);
+        for (var L = 0; L < lines.length; L++) {
+          TL.text(ctx, lines[L], TL.W / 2, y - 4 + L * 18, 9, '#cfeadd', 'center');
+        }
+      }
+      ctx.restore();
+    },
+    draw: function (ctx) { TL.Notify.drawStory(ctx); TL.Notify.drawStatus(ctx); }
+  };
+  /* legacy entry point: big=true routes important beats to the story zone */
+  TL.toast = function (text, color, big) {
+    if (big) TL.Notify.story(text);
+    else TL.Notify.status(text, color);
   };
 
   /* ---------- text helpers ---------- */
   /* UI text stays small; dialogues / book pages / slides set TL.BIG_TEXT
-     to render at full size while a large passage is on screen. */
+     to render at full size while a large passage is on screen.
+     TL.TS is a global legibility multiplier: every size that goes through
+     effSize (TL.text, TL.wrap) is scaled by it, everywhere. */
   TL.BIG_TEXT = false;
+  TL.TS = 1.12;
   TL.effSize = function (s) {
-    if (TL.BIG_TEXT || !s) return s;
-    return s <= 8 ? s : Math.max(8, Math.round(s * 0.8));
+    if (!s) return s;
+    var scaled = Math.round(s * TL.TS * 2) / 2;
+    if (TL.BIG_TEXT) return scaled;
+    return s <= 8 ? scaled : Math.max(8, Math.round(s * 0.8 * TL.TS * 2) / 2);
   };
   TL.font = function (px) { return px + 'px "Press Start 2P", monospace'; };
   TL.text = function (ctx, str, x, y, size, color, align, alpha) {

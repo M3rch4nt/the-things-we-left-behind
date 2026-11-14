@@ -1,0 +1,79 @@
+# Avatar Images — How to Import Your Own
+
+The game renders **hand-drawn pixel portraits by default**, but if you drop
+your own image files in the right place they are used automatically — no
+code changes needed.
+
+## Where to drop the files
+
+Copy your images into this folder (create it if missing):
+
+```
+C:\Users\HP\OneDrive\Desktop\nasa\maizay\assets\avatars\
+```
+
+Name each file exactly like the machine it replaces (the extension is free:
+`.jpg`, `.jpeg`, `.png`, `.webp` all work):
+
+| File name | Character |
+|---|---|
+| `viking1.jpg` | VIKING 1 |
+| `viking2.jpg` | VIKING 2 |
+| `pathfinder.jpg` | PATHFINDER |
+| `sojourner.jpg` | SOJOURNER |
+| `spirit.jpg` | SPIRIT |
+| `opportunity.jpg` | OPPORTUNITY |
+| `phoenix.jpg` | PHOENIX |
+| `curiosity.jpg` | CURIOSITY |
+| `insight.jpg` | INSIGHT |
+| `ingenuity.jpg` | INGENUITY |
+| `perseverance.jpg` | PERSEVERANCE |
+| `player.jpg` | SEEKER (you, the player) — the file must be named `player` |
+
+If the folder is empty or a file is missing, that character simply keeps its
+pixel-art portrait — nothing breaks.
+
+## How the mapping works (Godot → this game)
+
+Your Godot notes used a `TextureRect` with `expand_mode = IGNORE_SIZE` and
+`stretch_mode = KEEP_ASPECT_CENTERED`. This is a canvas game, so the same
+behaviour is implemented in `js/images.js`:
+
+- **Dialogue portraits** are drawn into a fixed 96×96 portrait slot.
+  Imported photos render **aspect-contained and centred** (the canvas
+  equivalent of `KEEP_ASPECT_CENTERED`): the whole image is visible, never
+  squashed, never cropped, centred in the slot.
+- **Archive slide photos** render through `TL.Images.drawContain` into the
+  fixed-aspect stage container — same semantics, letterboxed on an opaque
+  backing so the world background never bleeds through.
+- **World characters** (`TL.CHAR_DRAW`) stay hand-drawn sprites; avatars are
+  used for dialogue portraits and archive covers, matching the current game
+  look.
+
+## Getting sharp results
+
+1. **The loader auto-crops for you.** Imported avatars go through
+   `_autocrop` in `js/images.js`: it finds the subject bounding box, centre-
+   crops it to a square, and downscales to ≤240px before the dialogue box
+   draws it into its 96×96 slot. So don't pre-crop aggressively — a photo
+   with the machine centred on a plain background works great.
+2. **Export at 512×512 or larger.** Since the loader resamples anyway,
+   bigger sources survive the auto-crop + downscale crisply.
+3. **Any aspect ratio is fine** — the auto-crop squares it, and the final
+   draw is contained and centred (no stretch, no crop surprises).
+4. **PNG with transparency works** — the corner colour defines what counts
+   as background, so transparent PNGs crop to the subject.
+5. After adding files, regenerate the asset manifest so the browser loads
+   them:
+
+   ```
+   node tools/genmanifest.js
+   ```
+
+6. Refresh the page (Ctrl+F5 if the browser caches an old manifest).
+
+## Current state
+
+The `assets/avatars/` folder already ships with NASA photography for most
+machines (from the archive set). Drop a file with the same name to replace
+any of them; keep a backup of the original if you want it back.

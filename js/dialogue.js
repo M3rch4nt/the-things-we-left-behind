@@ -137,27 +137,46 @@
     ctx.fillRect(0, 0, TL.W, TL.H);
 
     var line = D.curLine();
-    var bx = 60, bw = TL.W - 120, by = TL.H - 190, bh = 150;
-    TL.panel(ctx, bx, by, bw, bh, { bg: 'rgba(5,18,24,0.94)' });
+    var bx = 60, bw = TL.W - 120;
+    /* box height grows with the FULL passage (stable during the typewriter
+       reveal) so long lines never overlap; bottom-anchored so it stays put */
+    var textLines = line ? TL.wrap(ctx, line.t, bw - 150, 11) : ['...'];
+    var bh = Math.max(150, 52 + textLines.length * 19 + 14);
+    var by = TL.H - 40 - bh;
+    /* single clean semi-transparent container: flat fill + one thin border,
+       no stacked panels, no corner brackets */
+    ctx.fillStyle = 'rgba(5,16,22,0.88)';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = 'rgba(110,220,200,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
 
     if (line) {
       var sp = speakerOf(line.w);
       /* portrait: user-imported avatar if provided, pixel art otherwise */
       var px = bx + 16, py = by + 16;
-      TL.panel(ctx, px - 4, py - 4, 104, 104, { corner: sp.color });
+      ctx.strokeStyle = sp.color;
+      ctx.strokeRect(px - 4.5, py - 4.5, 103, 103);
       var av = TL.Images ? TL.Images.avatar(sp.portrait) : null;
       ctx.imageSmoothingEnabled = !!av;
       ctx.drawImage(av || TL.portrait(sp.portrait), px, py, 96, 96);
       ctx.imageSmoothingEnabled = false;
       /* name */
-      TL.panel(ctx, px + 112, by + 10, 180, 22, { bg: 'rgba(10,30,36,0.9)', corner: sp.color });
-      TL.text(ctx, sp.name, px + 122, by + 15, 9, sp.color);
-      /* text with typewriter */
-      var shown = line.t.slice(0, Math.floor(D.curPos()));
-      var lines = TL.wrap(ctx, shown, bw - 150, 10);
+      TL.text(ctx, sp.name, px + 112, by + 15, 10, sp.color);
+      ctx.fillStyle = 'rgba(110,220,200,0.18)';
+      ctx.fillRect(px + 112, by + 32, 180, 1);
+      /* text with typewriter — pre-wrapped above, roomy 19px leading.
+         Word-wrapped full text is revealed across lines, so the layout
+         never reflows while typing. */
+      var shown = Math.floor(D.curPos());
+      var cnt = 0;
       var ty = by + 44;
-      for (var i = 0; i < lines.length; i++) {
-        TL.text(ctx, lines[i], px + 112, ty + i * 17, 10, '#c8e8dc');
+      for (var i = 0; i < textLines.length; i++) {
+        var ln = textLines[i];
+        if (cnt >= shown) break;
+        var part = ln.slice(0, Math.max(0, shown - cnt));
+        TL.text(ctx, part, px + 112, ty + i * 19, 11, '#c8e8dc');
+        cnt += ln.length + 1;
       }
       /* continue indicator */
       if (D.curPos() >= line.t.length) {

@@ -37,36 +37,36 @@
     /* Gusev */
     gusev_patch:  { area: 'gusev', type: 'patch', x: 900,  label: 'MER-A MISSION PATCH', text: 'A patch with a sunrise over a crater. MER-A was later named "Spirit" by a nine-year-old girl, Sofi Collis.' },
     gusev_note:   { area: 'gusev', type: 'note',  x: 2600, label: 'TROY LOG ENTRY', text: '"Sol 1892: embedded to the hubs in soft soil. Engineers spent a year trying to free me. I never stopped logging."' },
-    gusev_photo:  { area: 'gusev', type: 'photo', x: 4300, label: 'COLUMBIA HILLS PHOTO', text: 'A photo of Husband Hill, named for the commander of Columbia. Spirit climbed it when it was only supposed to look at dust.' },
-    /* Meridiani */
-    meridi_patch: { area: 'meridiani', type: 'patch', x: 1200, label: 'MER-B MISSION PATCH', text: 'A patch with a golf ball on a Martian tee. Engineers joked that Opportunity\'s landing was a "hole in one".' },
-    meridi_photo: { area: 'meridiani', type: 'photo', x: 3300, label: 'EAGLE CRATER PHOTO', text: 'A photo of layered bedrock inside Eagle Crater — the first hard proof of an ancient sea of salty water.' },
-    meridi_note:  { area: 'meridiani', type: 'note',  x: 4600, label: 'DISTANCE LOG', text: '"Odometer: 45.16 km. Planned: 600 metres. The little rover that could, then did, then kept going."' },
+    gusev_photo:  { area: 'gusev', type: 'photo', x: 3600, label: 'COLUMBIA HILLS PHOTO', text: 'A photo of Husband Hill, named for the commander of Columbia. Spirit climbed it when it was only supposed to look at dust.' },
+    /* Meridiani (merged into WORLD 03 · Gusev) */
+    meridi_patch: { area: 'gusev', type: 'patch', x: 2700, label: 'MER-B MISSION PATCH', text: 'A patch with a golf ball on a Martian tee. Engineers joked that Opportunity\'s landing was a "hole in one".' },
+    meridi_photo: { area: 'gusev', type: 'photo', x: 4600, label: 'EAGLE CRATER PHOTO', text: 'A photo of layered bedrock inside Eagle Crater — the first hard proof of an ancient sea of salty water.' },
+    meridi_note:  { area: 'gusev', type: 'note',  x: 5600, label: 'DISTANCE LOG', text: '"Odometer: 45.16 km. Planned: 600 metres. The little rover that could, then did, then kept going."' },
     /* Chryse */
     chryse_patch: { area: 'chryse', type: 'patch', x: 1000, label: 'VIKING PROGRAM PATCH', text: 'Two golden landers over a planet. The Viking team wore these while waiting 45 minutes for each radio reply.' },
     chryse_note:  { area: 'chryse', type: 'note',  x: 2400, label: 'FIRST IMAGE NOTE', text: '"July 20, 1976, 20:19 — the first photograph from the surface of Mars. Someone forgot to uncapp... uncap the lens. Fixed in 6 hours. Worth it."' },
-    /* Utopia */
-    utopia_patch: { area: 'utopia', type: 'patch', x: 1300, label: 'UTOPIA PLANITIA PATCH', text: 'A patch for the northern landing site. "Utopia" means "no place" — a joke by Thomas More that became a real address in space.' },
-    utopia_note:  { area: 'utopia', type: 'note',  x: 3900, label: 'WINTER LOG', text: '"Winter at Utopia: 50% power, 80% morale. The frost on my sample arm was beautiful. Logged daily. No one told me to stop."' },
-    utopia_shard: { area: 'utopia', type: 'shard', x: 5200, label: 'SPARE RELAY CHIP', text: 'A spare relay chip shipped for Viking 2. It spent forty years in a drawer at JPL, then was donated to a museum in 2001.' },
-    /* Vastitas Borealis */
-    boreal_patch: { area: 'boreal', type: 'patch', x: 1100, label: 'PHOENIX PATCH', text: 'A phoenix rising from Mars\' polar circle. The lander was rebuilt from spare parts of failed missions — and made them fly.' },
-    boreal_photo: { area: 'boreal', type: 'photo', x: 2800, label: 'ICE SUBlimATION PHOTO', text: 'A photo of a trench: ice chunks that vanished over four days, right before the cameras. Ice, sublimating. Proof, pixel by pixel.' },
-    boreal_note:  { area: 'boreal', type: 'note',  x: 4100, label: 'MISSION CRYING LOG', text: '"We found water ice on Mars today. The room cried. Then we got back to work."' },
+    /* Utopia (merged into WORLD 01 · Chryse) */
+    utopia_patch: { area: 'chryse', type: 'patch', x: 3400, label: 'UTOPIA PLANITIA PATCH', text: 'A patch for the northern landing site. "Utopia" means "no place" — a joke by Thomas More that became a real address in space.' },
+    utopia_note:  { area: 'chryse', type: 'note',  x: 4400, label: 'WINTER LOG', text: '"Winter at Utopia: 50% power, 80% morale. The frost on my sample arm was beautiful. Logged daily. No one told me to stop."' },
+    utopia_shard: { area: 'chryse', type: 'shard', x: 6200, label: 'SPARE RELAY CHIP', text: 'A spare relay chip shipped for Viking 2. It spent forty years in a drawer at JPL, then was donated to a museum in 2001.' },
+    /* Vastitas Borealis (WORLD 04 — Phoenix 2008 + Curiosity 2012) */
+    boreal_patch: { area: 'boreal', type: 'patch', x: 900, label: 'PHOENIX PATCH', text: 'A phoenix rising from Mars\' polar circle. The lander was rebuilt from spare parts of failed missions — and made them fly.' },
+    boreal_photo: { area: 'boreal', type: 'photo', x: 1800, label: 'ICE SUBlimATION PHOTO', text: 'A photo of a trench: ice chunks that vanished over four days, right before the cameras. Ice, sublimating. Proof, pixel by pixel.' },
+    boreal_note:  { area: 'boreal', type: 'note',  x: 2600, label: 'MISSION CRYING LOG', text: '"We found water ice on Mars today. The room cried. Then we got back to work."' },
     /* Elysium */
     elysium_patch:{ area: 'elysium', type: 'patch', x: 1500, label: 'INSIGHT PATCH', text: 'A patch with a seismogram line tracing a heartbeat. InSight: "Interior exploration using Seismic Investigations".' },
     elysium_note: { area: 'elysium', type: 'note',  x: 3200, label: 'THE MOLE MEMO', text: '"Day 400: the heat probe still will not dig. But the seismometer heard a quake from 3,000 km away. The planet is talking. Keep listening."' },
     elysium_photo:{ area: 'elysium', type: 'photo', x: 4700, label: 'FINAL SELFIE', text: 'InSight\'s last self-portrait, dust on every panel. Caption at JPL: "It stayed polite until the very end."' },
-    /* Jezero */
+    /* Jezero (WORLD 06 — also hosts the Mariner 4 relay) */
     jezero_patch: { area: 'jezero', type: 'patch', x: 1250, label: 'MARS 2020 PATCH', text: 'A patch with a rover crossing a river delta. Perseverance was named by a seventh-grader, Alexander Mather.' },
     jezero_note:  { area: 'jezero', type: 'note',  x: 3000, label: 'SAMPLE DEPOT LOG', text: '"Tube 24 sealed. A backup sample depot left on the delta floor — a treasure map for a future ship."' },
     jezero_shard: { area: 'jezero', type: 'shard', x: 4450, label: 'MOXIE ELECTRODE', text: 'An electrode from MOXIE, which split Martian air into breathable oxygen — 122 grams total, the first factory on another planet.' },
-    /* Gale */
-    gale_patch:   { area: 'gale', type: 'patch', x: 1400, label: 'CURIOSITY PATCH', text: 'A patch with a child\'s drawing of a rover, chosen from 28,000 contest entries. Curiosity: landed on a wheel and a prayer.' },
-    gale_photo:   { area: 'gale', type: 'photo', x: 3300, label: 'MOUNT SHARP PHOTO', text: 'A photo of Mount Sharp\'s layered cliffs — a 5 km stack of time, each layer a chapter of a drying lake.' },
-    gale_note:    { area: 'gale', type: 'note',  x: 4800, label: 'BIRTHDAY PROTOCOL', text: '"Each Aug 6, vibrate a sample cup in the key of Happy Birthday. Volume: as loud as a music box. Distance from Earth: 200,000,000 km."' },
-    /* Relay */
-    relay_patch:  { area: 'relay', type: 'patch', x: 1600, label: 'MARINER 4 PATCH', text: 'A patch from 1964-65: the first successful mission to Mars. 21 photos. The pictures that ended the dream of canal-digging Martians — and started the real one.' }
+    /* Gale (merged into WORLD 04 · Vastitas Borealis) */
+    gale_patch:   { area: 'boreal', type: 'patch', x: 3400, label: 'CURIOSITY PATCH', text: 'A patch with a child\'s drawing of a rover, chosen from 28,000 contest entries. Curiosity: landed on a wheel and a prayer.' },
+    gale_photo:   { area: 'boreal', type: 'photo', x: 4300, label: 'MOUNT SHARP PHOTO', text: 'A photo of Mount Sharp\'s layered cliffs — a 5 km stack of time, each layer a chapter of a drying lake.' },
+    gale_note:    { area: 'boreal', type: 'note',  x: 5100, label: 'BIRTHDAY PROTOCOL', text: '"Each Aug 6, vibrate a sample cup in the key of Happy Birthday. Volume: as loud as a music box. Distance from Earth: 200,000,000 km."' },
+    /* Relay (Mariner 4 — met at the far end of Jezero) */
+    relay_patch:  { area: 'jezero', type: 'patch', x: 5300, label: 'MARINER 4 PATCH', text: 'A patch from 1964-65: the first successful mission to Mars. 21 photos. The pictures that ended the dream of canal-digging Martians — and started the real one.' }
   };
 
   /* ================= ARCHIVE DATABASE ================= */
@@ -217,9 +217,28 @@
   /* theme: sky top/bottom, sun, ground palette, rock palette, far silhouettes */
   TL.D.AREAS = [
     {
-      id: 'ares', name: 'WORLD 01', region: 'ARES VALLIS', year: '1997', sub: 'PATHFINDER & SOJOURNER', w: 5600, rugged: 0.5,
+      /* WORLD 01 — the Viking twins, 1976. One map, both landers. */
+      id: 'chryse', name: 'WORLD 01', region: 'CHRYSE PLANITIA', year: '1976', sub: 'VIKING 1 & VIKING 2', w: 6800, rugged: 0.45,
+      theme: { skyA: '#cf7d4a', skyB: '#93452c', sun: '#ffd8a0', far: '#683226', mid: '#95492f', ground: '#ad5f34', groundDark: '#753e22', rock: '#83482e', rockHi: '#b97448', dust: '#e2a172', stars: false },
+      objective: 'ANSWER THE TWO OLDEST CALLS',
+      ents: [
+        { type: 'char', id: 'viking1', x: 2900 },
+        { type: 'char', id: 'viking2', x: 5600 },
+        { type: 'station', x: 700 },
+        { type: 'station', x: 2600 },
+        { type: 'station', x: 4600 },
+        { type: 'pit', x: 1500, w: 88 },
+        { type: 'pit', x: 5000, w: 96 },
+        { type: 'exit', dir: 1, x: 6760, to: 'ares' }
+      ],
+      items: ['chryse_patch', 'chryse_note', 'utopia_patch', 'utopia_note', 'utopia_shard'],
+      intro: true
+    },
+    {
+      /* WORLD 02 — Pathfinder & Sojourner, 1997 */
+      id: 'ares', name: 'WORLD 02', region: 'ARES VALLIS', year: '1997', sub: 'PATHFINDER & SOJOURNER', w: 5600, rugged: 0.5,
       theme: { skyA: '#c86a3c', skyB: '#8a3f28', sun: '#ffd9a0', far: '#6d2f22', mid: '#93472f', ground: '#b56536', groundDark: '#7e3f22', rock: '#8a4a30', rockHi: '#c07a4a', dust: '#e8a070', stars: false },
-      objective: 'INVESTIGATE UNKNOWN SIGNAL',
+      objective: 'MEET THE FIRST EXPLORERS',
       ents: [
         { type: 'char', id: 'pathfinder', x: 1500 },
         { type: 'char', id: 'sojourner', x: 2350 },
@@ -227,85 +246,51 @@
         { type: 'station', x: 3200 },
         { type: 'pit', x: 3550, w: 96 },
         { type: 'pit', x: 4300, w: 88 },
+        { type: 'exit', dir: -1, x: 40, to: 'chryse' },
         { type: 'exit', dir: 1, x: 5560, to: 'gusev' }
       ],
-      items: ['ares_patch', 'ares_photo', 'ares_note'],
-      intro: true
+      items: ['ares_patch', 'ares_photo', 'ares_note']
     },
     {
-      id: 'gusev', name: 'WORLD 02', region: 'GUSEV CRATER', year: '2004', sub: 'SPIRIT', w: 5200, rugged: 0.8,
+      /* WORLD 03 — the twin rovers, 2004 */
+      id: 'gusev', name: 'WORLD 03', region: 'GUSEV CRATER', year: '2004', sub: 'SPIRIT & OPPORTUNITY', w: 6400, rugged: 0.8,
       theme: { skyA: '#d47a44', skyB: '#8c4227', sun: '#ffdca6', far: '#5d2b20', mid: '#8a432c', ground: '#a85830', groundDark: '#6e3a20', rock: '#7d442c', rockHi: '#b06a40', dust: '#e09a6a', stars: false },
-      objective: 'LOCATE THE GRUMBLING ROVER',
+      objective: 'FIND THE TWIN ROVERS',
       ents: [
-        { type: 'char', id: 'spirit', x: 3400 },
+        { type: 'char', id: 'spirit', x: 3000 },
+        { type: 'char', id: 'opportunity', x: 5200 },
         { type: 'station', x: 800 },
         { type: 'station', x: 2500 },
+        { type: 'station', x: 4200 },
         { type: 'pit', x: 1700, w: 96 },
-        { type: 'pit', x: 2900, w: 88 },
+        { type: 'pit', x: 3900, w: 88 },
         { type: 'exit', dir: -1, x: 40, to: 'ares' },
-        { type: 'exit', dir: 1, x: 5160, to: 'meridiani' }
+        { type: 'exit', dir: 1, x: 6360, to: 'boreal' }
       ],
-      items: ['gusev_patch', 'gusev_note', 'gusev_photo']
+      items: ['gusev_patch', 'gusev_note', 'meridi_patch', 'gusev_photo', 'meridi_photo', 'meridi_note']
     },
     {
-      id: 'meridiani', name: 'WORLD 03', region: 'MERIDIANI PLANUM', year: '2004', sub: 'OPPORTUNITY', w: 5400, rugged: 0.2,
-      theme: { skyA: '#c77a4a', skyB: '#7d4630', sun: '#ffe0b0', far: '#63301f', mid: '#8f4d2e', ground: '#8f5632', groundDark: '#5f3a22', rock: '#6e4630', rockHi: '#a5744c', dust: '#d9a072', stars: false },
-      objective: 'FIND THE TALKATIVE ROVER',
+      /* WORLD 04 — from ice to the mountain. Phoenix arrived 2008 (the world
+         year); Curiosity's era begins 2012 — flagged beside the rover. */
+      id: 'boreal', name: 'WORLD 04', region: 'VASTITAS BOREALIS', year: '2008', sub: 'PHOENIX · CURIOSITY', w: 6800, rugged: 0.35,
+      theme: { skyA: '#b98a6a', skyB: '#6e5148', sun: '#f8e8d0', far: '#5c4640', mid: '#8a6a58', ground: '#a8805e', groundDark: '#6e5440', rock: '#8a6a52', rockHi: '#c8a486', dust: '#e8c8a8', frost: true, stars: false, mountain: true },
+      objective: 'FROM ICE TO THE ANCIENT LAKE',
       ents: [
-        { type: 'char', id: 'opportunity', x: 3800 },
-        { type: 'station', x: 600 },
-        { type: 'station', x: 2700 },
-        { type: 'pit', x: 2100, w: 96 },
-        { type: 'exit', dir: -1, x: 40, to: 'gusev' },
-        { type: 'exit', dir: 1, x: 5360, to: 'chryse' }
-      ],
-      items: ['meridi_patch', 'meridi_photo', 'meridi_note']
-    },
-    {
-      id: 'chryse', name: 'WORLD 04', region: 'CHRYSE PLANITIA', year: '1976', sub: 'VIKING 1', w: 4600, rugged: 0.45,
-      theme: { skyA: '#cf7d4a', skyB: '#93452c', sun: '#ffd8a0', far: '#683226', mid: '#95492f', ground: '#ad5f34', groundDark: '#753e22', rock: '#83482e', rockHi: '#b97448', dust: '#e2a172', stars: false },
-      objective: 'ANSWER THE OLDEST CALL',
-      ents: [
-        { type: 'char', id: 'viking1', x: 2900 },
-        { type: 'station', x: 500 },
-        { type: 'station', x: 1800 },
-        { type: 'pit', x: 1200, w: 88 },
-        { type: 'exit', dir: -1, x: 40, to: 'meridiani' },
-        { type: 'exit', dir: 1, x: 4560, to: 'utopia' }
-      ],
-      items: ['chryse_patch', 'chryse_note']
-    },
-    {
-      id: 'utopia', name: 'WORLD 05', region: 'UTOPIA PLANITIA', year: '1976', sub: 'VIKING 2', w: 5600, rugged: 0.6,
-      theme: { skyA: '#b56a44', skyB: '#6e3a2c', sun: '#f5c99a', far: '#4e2822', mid: '#7c3e2c', ground: '#96502e', groundDark: '#63361f', rock: '#74402a', rockHi: '#a4663e', dust: '#cf9168', stars: false },
-      objective: 'FIND THE NORTHERN TWIN',
-      ents: [
-        { type: 'char', id: 'viking2', x: 3600 },
+        { type: 'char', id: 'phoenix', x: 2400 },
+        { type: 'char', id: 'curiosity', x: 4600, tag: '2012' },
         { type: 'station', x: 700 },
-        { type: 'station', x: 2300 },
-        { type: 'pit', x: 1600, w: 96 },
-        { type: 'pit', x: 4500, w: 96 },
-        { type: 'exit', dir: -1, x: 40, to: 'chryse' },
-        { type: 'exit', dir: 1, x: 5560, to: 'boreal' }
+        { type: 'station', x: 3400 },
+        { type: 'station', x: 5600 },
+        { type: 'pit', x: 1600, w: 88 },
+        { type: 'pit', x: 5300, w: 96 },
+        { type: 'exit', dir: -1, x: 40, to: 'gusev' },
+        { type: 'exit', dir: 1, x: 6760, to: 'elysium' }
       ],
-      items: ['utopia_patch', 'utopia_note', 'utopia_shard']
+      items: ['boreal_patch', 'boreal_photo', 'boreal_note', 'gale_patch', 'gale_photo', 'gale_note']
     },
     {
-      id: 'boreal', name: 'WORLD 06', region: 'VASTITAS BOREALIS', year: '2008', sub: 'PHOENIX', w: 5000, rugged: 0.35,
-      theme: { skyA: '#b98a6a', skyB: '#6e5148', sun: '#f8e8d0', far: '#5c4640', mid: '#8a6a58', ground: '#a8805e', groundDark: '#6e5440', rock: '#8a6a52', rockHi: '#c8a486', dust: '#e8c8a8', frost: true, stars: false },
-      objective: 'FOLLOW THE GLINT OF ICE',
-      ents: [
-        { type: 'char', id: 'phoenix', x: 3200 },
-        { type: 'station', x: 600 },
-        { type: 'station', x: 2000 },
-        { type: 'pit', x: 1400, w: 88 },
-        { type: 'exit', dir: -1, x: 40, to: 'utopia' },
-        { type: 'exit', dir: 1, x: 4960, to: 'elysium' }
-      ],
-      items: ['boreal_patch', 'boreal_photo', 'boreal_note']
-    },
-    {
-      id: 'elysium', name: 'WORLD 07', region: 'ELYSIUM PLANITIA', year: '2018', sub: 'INSIGHT', w: 5400, rugged: 0.25,
+      /* WORLD 05 — InSight, standalone */
+      id: 'elysium', name: 'WORLD 05', region: 'ELYSIUM PLANITIA', year: '2018', sub: 'INSIGHT', w: 5400, rugged: 0.25,
       theme: { skyA: '#c88a58', skyB: '#7d4e38', sun: '#ffe0b4', far: '#5e3a2c', mid: '#8a5a3c', ground: '#9a6238', groundDark: '#66421f', rock: '#7a503a', rockHi: '#ae7a52', dust: '#dcae82', stars: false, volcano: true },
       objective: 'LISTEN FOR THE QUIET ONE',
       ents: [
@@ -319,51 +304,29 @@
       items: ['elysium_patch', 'elysium_note', 'elysium_photo']
     },
     {
-      id: 'jezero', name: 'WORLD 08', region: 'JEZERO CRATER', year: '2021', sub: 'INGENUITY & PERSEVERANCE', w: 5800, rugged: 0.7,
+      /* WORLD 06 — flight test + the signal source. Completing this world
+         triggers the ending: the relay sits at the far end of Jezero. */
+      id: 'jezero', name: 'WORLD 06', region: 'JEZERO CRATER', year: '2021', sub: 'INGENUITY & PERSEVERANCE', w: 6600, rugged: 0.7,
       theme: { skyA: '#d4814a', skyB: '#8c472c', sun: '#ffd9a2', far: '#663224', mid: '#94492e', ground: '#b26238', groundDark: '#7a4024', rock: '#84482e', rockHi: '#bb7648', dust: '#e6a272', stars: false, delta: true },
-      objective: 'REACH THE FLIGHT TEST AREA',
+      objective: 'REACH THE SIGNAL SOURCE',
       ents: [
-        { type: 'char', id: 'ingenuity', x: 2600 },
-        { type: 'char', id: 'perseverance', x: 4300 },
+        { type: 'char', id: 'ingenuity', x: 2200 },
+        { type: 'char', id: 'perseverance', x: 3800 },
+        { type: 'char', id: 'relay', x: 5900, tag: '1965' },
         { type: 'station', x: 700 },
-        { type: 'station', x: 3300 },
+        { type: 'station', x: 3000 },
         { type: 'pit', x: 1800, w: 96 },
-        { type: 'pit', x: 5100, w: 88 },
-        { type: 'exit', dir: -1, x: 40, to: 'elysium' },
-        { type: 'exit', dir: 1, x: 5760, to: 'gale' }
+        { type: 'pit', x: 4900, w: 88 },
+        { type: 'exit', dir: -1, x: 40, to: 'elysium' }
       ],
-      items: ['jezero_patch', 'jezero_note', 'jezero_shard']
-    },
-    {
-      id: 'gale', name: 'WORLD 09', region: 'GALE CRATER', year: '2012', sub: 'CURIOSITY', w: 5400, rugged: 0.5,
-      theme: { skyA: '#c97e4e', skyB: '#86462e', sun: '#ffdba4', far: '#643428', mid: '#904c30', ground: '#a85e36', groundDark: '#704022', rock: '#7e4a30', rockHi: '#b2724a', dust: '#dfa276', stars: false, mountain: true },
-      objective: 'FIND THE SINGING ROVER',
-      ents: [
-        { type: 'char', id: 'curiosity', x: 3000 },
-        { type: 'station', x: 900 },
-        { type: 'station', x: 2200 },
-        { type: 'pit', x: 1700, w: 96 },
-        { type: 'exit', dir: -1, x: 40, to: 'jezero' },
-        { type: 'exit', dir: 1, x: 5360, to: 'relay' }
-      ],
-      items: ['gale_patch', 'gale_photo', 'gale_note']
-    },
-    {
-      id: 'relay', name: 'WORLD 10', region: 'UNKNOWN SOURCE', year: '1965', sub: 'MARINER 4 ECHO', w: 4200, rugged: 0.4,
-      theme: { skyA: '#6a4a58', skyB: '#2e2438', sun: '#c8b8e0', far: '#3a2c44', mid: '#5a4054', ground: '#7c5a5c', groundDark: '#4e383c', rock: '#5c4650', rockHi: '#8a6a74', dust: '#b09aa8', stars: true },
-      objective: 'TRIANGULATE THE TRANSMISSION',
-      ents: [
-        { type: 'char', id: 'relay', x: 3000 },
-        { type: 'station', x: 700 },
-        { type: 'station', x: 2000 },
-        { type: 'pit', x: 1300, w: 96 },
-        { type: 'exit', dir: -1, x: 40, to: 'gale' }
-      ],
-      items: ['relay_patch']
+      items: ['jezero_patch', 'jezero_note', 'jezero_shard', 'relay_patch']
     }
   ];
 
-  /* ---- world compaction: discoveries sit a little closer to the doors ---- */
+  /* ---- world compaction: discoveries sit a little closer to the doors ----
+     Ent coordinates AND item coordinates are authored against the full-size
+     world, so both are compacted together — items authored pre-compaction
+     (e.g. x 4700 in a 5400-wide elysium) stay reachable in the compacted map. */
   (function () {
     for (var i = 0; i < TL.D.AREAS.length; i++) {
       var a = TL.D.AREAS[i];
@@ -372,6 +335,11 @@
         var e = a.ents[j];
         if (e.type === 'exit') e.x = e.dir === 1 ? a.w - 40 : 40;  /* keep door margins */
         else e.x = Math.round(e.x * 0.65);                          /* pit width (w) unchanged */
+      }
+      /* compact collectible positions to match */
+      for (var k = 0; k < a.items.length; k++) {
+        var it = TL.D.ITEMS[a.items[k]];
+        if (it && it.area === a.id) it.x = Math.round(it.x * 0.65);
       }
     }
   })();
@@ -602,26 +570,24 @@
     'opportunity', 'phoenix', 'curiosity', 'insight', 'ingenuity', 'perseverance'];
 
   TL.D.EPILOGUE = [
-    'UPLINK ESTABLISHED — EARTH',
-    'The fragments assembled: launch days and last days, hot springs and blueberries, frost on a sample arm and a birthday song in an empty crater.',
-    'For sixty years humanity wondered if its machines were lonely out here. The machines were not lonely. They were LISTENING. Every one of them kept the record, in case anyone ever came back for it.',
-    'The things humanity left behind were never left behind. They were trusted — with the rocks, the winters, the wind, and the waiting.',
-    'MISSION COMPLETE. DISCOVERIES: 12/12. SENDING EVERYTHING HOME.',
-    'Signed: THE EXPLORERS OF MARS, 1965 — present'
+    'Uplink established. Earth is listening.',
+    'Everything is here. Mariner 4\'s eleven half-ruined frames — the first close-up of another world, drawn by hand from numbers because we could not yet look.',
+    'Viking 2, waiting alone in the winds of Utopia Planitia. It recorded four Martian years of frost and falling dust, just in case someone ever read the log.',
+    'Spirit, reading the rocks of Gusev like pages: ash, silica, carbonate. An old lake, decoded layer by layer. Curiosity, climbing a mountain of time, still singing in the key of C.',
+    'Each machine carried the last one forward. Every failure became a lesson. Every silence became a question someone refused to stop asking.',
+    'That is what perseverance means. Not one heroic jump — a relay. A torch passed hand to hand across generations, across sixty years, across 250 million kilometres.',
+    'You were not tracking a signal, little one. You were RECEIVING it. The record is yours now. Carry it forward.',
+    'MISSION COMPLETE. DISCOVERIES: 12/12. SENDING EVERYTHING HOME.'
   ];
 
   /* per-area welcome shown when entering first time */
   TL.D.WELCOME = {
-    ares: 'MARS. You travelled millions of kilometres and were not the first one here. Something is broadcasting, 300 metres ahead.',
-    gusev: 'A crater that held a lake. The wind carries a voice with an edge to it.',
-    meridiani: 'Endless flat plains. In the distance, something small and bright is talking to itself.',
-    chryse: 'The oldest voice on Mars is here. It has been waiting since 1976.',
-    utopia: 'The north. Colder, dimmer, quieter. Another dish glints in the dust.',
-    boreal: 'Frost on the ground. Something once dug here and found water.',
+    chryse: 'Touchdown confirmed. Chryse Planitia, 1976. Two dishes stand in the dust — the oldest voices on Mars, waiting here since 1976.',
+    ares: 'Pathfinder\'s landing site. A base station still points its dish at the sky, and out in the rocks, the first rover to drive on Mars is still surveying.',
+    gusev: 'A crater that held a lake. Two rovers wander these plains — one with an edge to its voice, one small and bright, talking to itself.',
+    boreal: 'Frost on the ground. Something here once dug for ice and found it — and farther on, a mountain of layered time hums a faint song.',
     elysium: 'A smooth, silent plain. Perfect ground for listening.',
-    jezero: 'An ancient river delta. Above the horizon: a flicker of rotor blades.',
-    gale: 'A mountain of layered time. You hear faint vibration — a song, maybe, in the key of C.',
-    relay: 'The source. The signal is strong here. Final objective.'
+    jezero: 'An ancient river delta. A flicker of rotor blades above the horizon — and somewhere past the flight zone, the source of the signal itself.'
   };
 
   /* ================= MINIGAME CONFIGS ================= */
@@ -728,7 +694,7 @@
     drill: {
       type: 'drill',
       title: 'PERSEVERANCE — SAMPLE SEALING',
-      prompt: 'Press SPACE / CLICK inside the green zone to seal each tube. 3 tubes.',
+      prompt: 'Press SPACE / CLICK as the cursor crosses the green window — a tone sounds as it enters. 3 tubes.',
       tubes: 3
     },
     laser: {
@@ -772,21 +738,25 @@
     }
   };
   TL.D.MG.spirit_layers = {
-    type: 'order',
+    type: 'strata',
     title: 'SPIRIT — STRATIGRAPHIC RECONSTRUCTION',
-    prompt: 'Rebuild the geological column: OLDEST layer at the BOTTOM. Click two chips to swap. Then press CONFIRM.',
+    prompt: 'Rebuild the core: drag each specimen into the column. TOP of the core is the YOUNGEST layer, BOTTOM is the OLDEST bedrock. Click a sample, then click a slot, if you prefer.',
     order: ['basalt', 'ash', 'silica', 'carbonate'],
     hints: [
       'Gusev\'s floor is ancient volcanic bedrock — nothing rests beneath it.',
       'Ash from the great eruptions settled over the bare rock before water left any minerals.',
       'Opaline silica points to hot springs late in the story; carbonate veins in neutral-pH water came last.'
     ],
-    labels: {
-      basalt: 'BEDROCK: Gusev\'s volcanic plain floor. The crater\'s original floor — no water here.',
-      ash: 'VOLCANIC ASH: laid down by ancient eruptions across the plains.',
-      silica: 'SILICA DEPOSITS: nearly pure opaline silica — hot springs or fumaroles. Water was HERE.',
-      carbonate: 'CARBONATE VEINS: formed in neutral-pH water, the strongest hint of a habitable ancient Gusev.'
-    }
+    samples: [
+      { id: 'basalt', name: 'BASALT BEDROCK', color: '#3a3f46', hi: '#5a626e',
+        desc: 'Volcanic plain floor. Gusev\'s original crust — no water ever touched it. Goes at the very bottom.' },
+      { id: 'ash', name: 'VOLCANIC ASH', color: '#6e5a48', hi: '#8f7a62',
+        desc: 'Fine grey-brown tuff, laid down by ancient eruptions across the bare rock.' },
+      { id: 'silica', name: 'OPALINE SILICA', color: '#c8dcd0', hi: '#e8f4ec',
+        desc: 'Nearly pure opaline silica — hot springs or fumaroles. Water was HERE.' },
+      { id: 'carbonate', name: 'CARBONATE VEINS', color: '#d8c8a8', hi: '#f0e4c8',
+        desc: 'Formed in neutral-pH water. The strongest hint of a habitable ancient Gusev. Youngest of all.' }
+    ]
   };
 
   /* which activity each char runs */

@@ -65,7 +65,6 @@
   function frame(ctx, title, prompt) {
     var th = THEMES[MG.id] || { ac: '#7ef0c8', tag: 'FIELD INSTRUMENT', sub: 'MAI TEAM · DX-7' };
     var ac = th.ac;
-    var now = performance.now();
     /* deep-space grid background, tinted per instrument */
     ctx.fillStyle = '#030d12';
     ctx.fillRect(0, 0, TL.W, TL.H);
@@ -91,36 +90,9 @@
     /* title + prompt */
     TL.text(ctx, title, 48, 30, 11, ac);
     TL.text(ctx, prompt, 48, 48, 8, '#9fd8c8');
-    /* animated LED chase strip */
-    for (var L2 = 0; L2 < 9; L2++) {
-      var lx = TL.W - 262 + L2 * 24;
-      var lit = ((L2 + ((now / 130) | 0)) % 3) === 0;
-      ctx.globalAlpha = lit ? 0.95 : 0.18;
-      ctx.fillStyle = ac;
-      ctx.fillRect(lx, 16, 10, 8);
-    }
-    ctx.globalAlpha = 1;
-    /* mission sub label */
-    TL.text(ctx, th.sub, TL.W - 26, 34, 6, '#7ab8a8', 'right');
-    /* analog dial with slowly sweeping needle */
-    var dx3 = TL.W - 52, dy3 = 66, dr = 13;
-    ctx.fillStyle = '#0c1418'; ctx.beginPath(); ctx.arc(dx3, dy3, dr, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(126,240,200,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.strokeStyle = '#5a8a7a';
-    for (var k = 0; k < 5; k++) {
-      var ta = -2.3 + k * 0.65;
-      ctx.beginPath();
-      ctx.moveTo(dx3 + Math.cos(ta) * (dr - 4), dy3 + Math.sin(ta) * (dr - 4));
-      ctx.lineTo(dx3 + Math.cos(ta) * (dr - 1), dy3 + Math.sin(ta) * (dr - 1));
-      ctx.stroke();
-    }
-    var na = -2.3 + ((Math.sin(now * 0.0007) + 1) / 2) * 2.6;
-    ctx.strokeStyle = ac; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(dx3, dy3); ctx.lineTo(dx3 + Math.cos(na) * (dr - 3), dy3 + Math.sin(na) * (dr - 3)); ctx.stroke();
-    ctx.fillStyle = ac; ctx.fillRect(dx3 - 1, dy3 - 1, 3, 3);
-    /* REC blinker */
-    if ((now % 1000) < 620) { ctx.fillStyle = '#e05848'; ctx.fillRect(TL.W - 116, 62, 7, 7); }
-    TL.text(ctx, 'REC', TL.W - 104, 62, 6, '#8a5a50');
+    /* single calm, static status line — no LEDs, no dial, no blinker */
+    TL.text(ctx, 'SYS NOMINAL', TL.W - 26, 34, 6, 'rgba(126,240,200,0.55)', 'right');
+    TL.text(ctx, th.sub, TL.W - 26, 48, 6, '#7ab8a8', 'right');
   }
 
   function button(ctx, x, y, w, h, label, hot, active) {
@@ -248,7 +220,7 @@
     }
     var cols = chips.length <= 4 ? 2 : chips.length <= 6 ? 3 : 4;
     var rows = Math.ceil(chips.length / cols);
-    var cw = Math.min(200, (TL.W - 160) / cols - 10), ch = chips.length <= 4 ? 92 : 78;
+    var cw = Math.min(200, (TL.W - 160) / cols - 10), ch = chips.length <= 4 ? 96 : 86;
     var gx = (TL.W - (cols * (cw + 12) - 12)) / 2, gy = 140;
     var g = {
       update: function (dt) {
@@ -289,7 +261,7 @@
           TL.text(ctx, chips[i].title, cxx + 26, cyy + 8, 9, '#d8b25a');
           var lines = TL.wrap(ctx, chips[i].sub, cw - 20, 7);
           for (var L = 0; L < Math.min(lines.length, 4); L++) {
-            TL.text(ctx, lines[L], cxx + 8, cyy + 26 + L * 11, 7, '#9fd8c8');
+            TL.text(ctx, lines[L], cxx + 8, cyy + 26 + L * 12, 7, '#9fd8c8');
           }
         }
         var bw = 200, bxx = TL.W / 2 - bw / 2, byy = TL.H - 74;
@@ -791,31 +763,38 @@
     return g;
   };
 
-  /* ---- H. DRILL TIMING (Perseverance) ---- */
+  /* ---- H. DRILL TIMING (Perseverance) ----
+     Accessible timing game: the cursor rides a slow, smooth sinusoidal
+     wave (fully predictable), the seal window is generous with a soft
+     tolerance buffer, a tone cues you as the cursor ENTERS the window,
+     misses cost nothing but feedback, and input has a short cooldown. */
   builders.drill = function (cfg) {
-    var tube = 0, cursor = 0, dir = 1, sealed = [false, false, false], zoneW = 0.2, cool = 0, flashT = 0, flashOK = false;
+    var tube = 0, ph = 0, sealed = [], zoneW = 0.34, cool = 0, flashT = 0, flashOK = false, inZonePrev = false;
+    for (var i0 = 0; i0 < cfg.tubes; i0++) sealed.push(false);
     var g = {
       update: function (dt) {
-        var speed = 0.9 + tube * 0.35;
-        cursor += dir * speed * dt;
-        if (cursor > 1) { cursor = 1; dir = -1; }
-        if (cursor < 0) { cursor = 0; dir = 1; }
+        /* slow sinusoidal sweep: 1 full wave in ~2.9s, easing gently per tube */
+        ph += dt * (0.35 + tube * 0.06);
+        var cursor = g.cursor();
+        var inZone = Math.abs(cursor - 0.5) < zoneW / 2;
         cool = Math.max(0, cool - dt);
         flashT = Math.max(0, flashT - dt);
+        /* entry cue: a soft tone the moment the cursor crosses into the window */
+        if (inZone && !inZonePrev) TL.audio.blip(980, 0.06, 0.12);
+        inZonePrev = inZone;
         if ((TL.hit('space') || TL.mouse.clicked) && cool <= 0) {
-          cool = 0.4;
-          var center = 0.5, inZone = Math.abs(cursor - center) < zoneW / 2;
+          cool = 0.2;
           if (inZone) {
             sealed[tube] = true;
-            flashT = 0.5; flashOK = true;
-            TL.audio.chime(1.7);
+            flashT = 0.7; flashOK = true;
+            TL.audio.chime(1.7 + tube * 0.2);
             tube++;
-            zoneW = Math.max(0.09, zoneW - 0.05);
+            zoneW = Math.max(0.24, zoneW - 0.04);   /* gentle narrowing, stays fair */
             if (tube >= cfg.tubes) MG.win();
           } else {
-            flashT = 0.5; flashOK = false;
+            flashT = 0.6; flashOK = false;
             TL.audio.deny();
-            MG.fail('Seal misaligned — sample contaminated. A bad seal loses a piece of history. Again.');
+            MG.fail('Just wide of the window. No sample lost — the arm realigns automatically. Wait for the entry tone, then press.');
           }
         }
       },
@@ -823,17 +802,35 @@
         frame(ctx, cfg.title, cfg.prompt);
         var bx = 120, bw = TL.W - 240, by = 220, bh = 40;
         TL.panel(ctx, bx - 20, by - 60, bw + 40, bh + 130, {});
-        /* zones */
-        ctx.fillStyle = 'rgba(60,180,140,0.35)';
+        var cursor = g.cursor();
+        var inZone = Math.abs(cursor - 0.5) < zoneW / 2;
+        /* zones — the window glows while the cursor is inside it */
+        ctx.fillStyle = 'rgba(60,180,140,' + (inZone ? 0.5 + 0.15 * Math.sin(MG.t * 10) : 0.3) + ')';
         ctx.fillRect(bx + (0.5 - zoneW / 2) * bw, by, zoneW * bw, bh);
-        ctx.strokeStyle = '#7ef0c8';
+        ctx.strokeStyle = inZone ? '#aef0dd' : '#7ef0c8';
+        ctx.lineWidth = inZone ? 2 : 1;
         ctx.strokeRect(bx + (0.5 - zoneW / 2) * bw, by, zoneW * bw, bh);
+        ctx.lineWidth = 1;
+        /* ghost of the sinusoidal wave so the rhythm is readable */
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = '#7ef0c8';
+        ctx.beginPath();
+        for (var s = 0; s <= 64; s++) {
+          var sx = bx + (s / 64) * bw;
+          var sy = by + bh / 2 - Math.sin(s / 64 * Math.PI * 2 + ph) * (bh / 2 + 4);
+          if (s === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+        ctx.restore();
         ctx.fillStyle = 'rgba(110,220,200,0.12)';
         ctx.fillRect(bx, by + bh / 2 - 1, bw, 2);
-        /* cursor */
+        /* cursor rides the wave */
         var cx2 = bx + cursor * bw;
         ctx.fillStyle = flashT > 0 ? (flashOK ? '#aef0dd' : '#f0a050') : '#f8f4ec';
         ctx.fillRect(cx2 - 3, by - 14, 6, bh + 28);
+        /* live cue while inside the window */
+        if (inZone) TL.text(ctx, '\u266a IN WINDOW', bx + (0.5 - zoneW / 2) * bw, by - 26, 6, '#aef0dd', 'center');
         /* tube icons */
         for (var i = 0; i < cfg.tubes; i++) {
           var tx = TL.W / 2 - (cfg.tubes * 60) / 2 + i * 60 + 14, ty = 360;
@@ -845,11 +842,283 @@
           ctx.fillRect(tx + 3, ty + 6, 8, 18);
         }
         TL.text(ctx, 'TUBE ' + Math.min(tube + 1, cfg.tubes) + ' / ' + cfg.tubes, 120, 150, 10, '#7ef0c8');
-        TL.text(ctx, 'PRESS SPACE / CLICK WHEN THE CURSOR IS INSIDE THE SEAL WINDOW', 120, 320, 8, '#9fd8c8');
-        if (flashT > 0 && !flashOK) TL.staticOverlay(ctx, flashT);
+        TL.text(ctx, 'PRESS SPACE / CLICK WHEN THE CURSOR CROSSES THE GREEN WINDOW', 120, 320, 8, '#9fd8c8');
+        TL.text(ctx, 'A SOFT TONE SOUNDS AS THE CURSOR ENTERS — PRESS ON THE TONE', 120, 336, 6, '#6a9a8a');
+        if (flashT > 0 && !flashOK) TL.staticOverlay(ctx, flashT * 0.5);
       }
     };
-    g.cursor = function () { return cursor; };
+    /* current cursor position on the sine wave, 0..1 */
+    g.cursor = function () {
+      return (1 - Math.cos(ph * Math.PI * 2)) / 2;
+    };
+    g.state = function () { return { tube: tube, sealed: sealed, zoneW: zoneW }; };
+    return g;
+  };
+
+  /* ---- H2. STRATIGRAPHY (Spirit) — tactile two-column core builder ----
+     Left: specimen tray with grab handles and hover highlights.
+     Right: vertical core column, top = youngest, bottom = oldest.
+     Drag-and-drop plus click-to-place. Placing a sample renders its
+     rock texture with a mechanical lock animation and a scanner sweep.
+     ANALYZE CORE [E] unlocks only when every slot is filled, then runs
+     a bottom-to-top validation scan. */
+  builders.strata = function (cfg) {
+    var byId = {}, ids = [];
+    for (var i0 = 0; i0 < cfg.samples.length; i0++) { byId[cfg.samples[i0].id] = cfg.samples[i0]; ids.push(cfg.samples[i0].id); }
+    var order = cfg.order;                 /* oldest..youngest == bottom..top */
+    var n = order.length;
+    var slots = [], locks = [], scans = [], wrong = [];
+    for (var i1 = 0; i1 < n; i1++) { slots.push(null); locks.push(0); scans.push(0); wrong.push(false); }
+    var tray = shuffle(ids);
+    var carry = null, carryX = 0, carryY = 0, moved = 0, liftFrom = -1;
+    var phase = 'solve', scanT = 0, checked = -1;
+    var cardHover = -1, slotHover = -1;
+
+    /* geometry */
+    var trayX = 48, trayW = 320, cardH = 66, cardGap = 12, trayY = 128;
+    var colX = 560, colW = 240, slotH = 62, slotGap = 6, colY = 140;
+    var slotY = function (i) { return colY + i * (slotH + slotGap); };
+    var expectedFor = function (i) { return order[n - 1 - i]; };  /* slot 0 = top = youngest */
+
+    function slotAt(x, y) {
+      if (x < colX || x > colX + colW) return -1;
+      for (var i = 0; i < n; i++) if (y >= slotY(i) && y <= slotY(i) + slotH) return i;
+      return -1;
+    }
+    function cardAt(x, y) {
+      if (x < trayX || x > trayX + trayW) return -1;
+      for (var i = 0; i < tray.length; i++) {
+        var cy = trayY + i * (cardH + cardGap);
+        if (y >= cy && y <= cy + cardH) return i;
+      }
+      return -1;
+    }
+    function allFilled() {
+      for (var i = 0; i < n; i++) if (!slots[i]) return false;
+      return true;
+    }
+    function place(si) {
+      if (slots[si]) tray.push(slots[si]);           /* swap: occupant back to tray */
+      slots[si] = carry.id;
+      carry = null; moved = 0; liftFrom = -1;
+      locks[si] = 0.65; scans[si] = 0.9;
+      TL.audio.blip(240 + si * 50, 0.07, 0.12);
+      TL.audio.static(0.08, 0.05);
+    }
+    function toTray(id) { tray.push(id); }
+
+    /* ---- rock texture: banded, speckled, deterministic per sample ---- */
+    function drawRock(ctx, x, y, w, h, id, ghost) {
+      var s = byId[id];
+      ctx.save();
+      if (ghost) ctx.globalAlpha = 0.35;
+      ctx.fillStyle = s.color;
+      ctx.fillRect(x, y, w, h);
+      var rr = TL.RNG(1000 + id.length * 77 + id.charCodeAt(0) * 13);
+      /* horizontal deposition bands */
+      for (var b = 0; b < 4; b++) {
+        var by = y + h * (0.12 + b * 0.22);
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.fillRect(x, by, w, 2 + rr() * 3);
+        ctx.fillStyle = s.hi;
+        ctx.globalAlpha = (ghost ? 0.35 : 1) * 0.35;
+        ctx.fillRect(x, by + 2, w, 1);
+        ctx.globalAlpha = ghost ? 0.35 : 1;
+      }
+      /* mineral speckles */
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      for (var p = 0; p < 14; p++) ctx.fillRect(x + rr() * (w - 4), y + rr() * (h - 4), 2, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      for (p = 0; p < 8; p++) ctx.fillRect(x + rr() * (w - 4), y + rr() * (h - 4), 2, 2);
+      ctx.restore();
+    }
+
+    var g = {
+      update: function (dt) {
+        var mx = TL.mouse.x, my = TL.mouse.y;
+        for (var i = 0; i < n; i++) { locks[i] = Math.max(0, locks[i] - dt); scans[i] = Math.max(0, scans[i] - dt); }
+
+        if (phase === 'solve') {
+          slotHover = carry ? slotAt(mx, my) : slotAt(mx, my);
+          cardHover = carry ? -1 : cardAt(mx, my);
+          if (carry) moved += Math.abs(mx - carryX) + Math.abs(my - carryY);
+          carryX = mx; carryY = my;
+
+          if (carry) {
+            if (TL.mouse.released) {
+              var si = slotAt(mx, my);
+              if (si >= 0 && !(si === liftFrom && moved < 10)) place(si);
+              else if (moved > 10) { toTray(carry.id); carry = null; TL.audio.blip(180, 0.05, 0.08); }
+              /* else: a simple click picked it up — keep carrying */
+            }
+          } else if (TL.mouse.clicked) {
+            var s2 = slotAt(mx, my), c2 = cardAt(mx, my);
+            if (s2 >= 0 && slots[s2]) {          /* click-to-lift from a slot */
+              carry = { id: slots[s2] }; slots[s2] = null; liftFrom = s2;
+              TL.audio.blip(200, 0.05, 0.08);
+            } else if (c2 >= 0) {                /* click / grab from the tray */
+              carry = { id: tray[c2] }; tray.splice(c2, 1); liftFrom = -1;
+              TL.audio.blip(320, 0.05, 0.08);
+            }
+          }
+          /* ANALYZE CORE [E] — button click or the E key, only when full */
+          var btnY = slotY(n) + 26;
+          var overBtn = mx >= colX && mx <= colX + colW && my >= btnY && my <= btnY + 40;
+          if (allFilled() && (TL.actHit() || (TL.mouse.clicked && overBtn))) {
+            phase = 'analyze'; scanT = 0; checked = -1;
+            for (var w0 = 0; w0 < n; w0++) wrong[w0] = false;
+            TL.audio.static(0.2, 0.06);
+          }
+        } else {
+          /* bottom-to-top validation scan */
+          scanT += dt;
+          var si2 = Math.floor(scanT / 0.45);
+          if (si2 < n && si2 !== checked) {
+            checked = si2;
+            var slotIdx = n - 1 - si2;              /* bottom slot first */
+            scans[slotIdx] = 0.8;
+            if (slots[slotIdx] === expectedFor(slotIdx)) {
+              locks[slotIdx] = 0.7;
+              TL.audio.chime(1.2 + si2 * 0.15);
+            } else {
+              wrong[slotIdx] = true;
+              TL.audio.deny();
+            }
+          }
+          if (scanT > n * 0.45 + 0.6) {
+            var bad = [];
+            for (var b1 = 0; b1 < n; b1++) if (wrong[b1]) bad.push(b1);
+            if (bad.length) {
+              for (var b2 = 0; b2 < bad.length; b2++) { toTray(slots[bad[b2]]); slots[bad[b2]] = null; wrong[bad[b2]] = false; }
+              MG.fail('Core rejected: ' + (bad.length > 1 ? bad.length + ' layers are out of sequence' : 'one layer is out of sequence') + '. Youngest on top, bedrock at the bottom. The rejected specimens are back in the tray.');
+              phase = 'solve';
+            } else {
+              MG.win();
+            }
+          }
+        }
+      },
+
+      draw: function (ctx) {
+        frame(ctx, cfg.title, cfg.prompt);
+        var mx = TL.mouse.x, my = TL.mouse.y;
+
+        /* ============ LEFT — SPECIMEN TRAY ============ */
+        TL.text(ctx, 'SPECIMEN TRAY', trayX, 108, 9, '#d8b25a');
+        ctx.fillStyle = 'rgba(216,178,90,0.25)'; ctx.fillRect(trayX, 118, trayW, 1);
+        for (var i = 0; i < tray.length; i++) {
+          var id = tray[i], s = byId[id];
+          var cy = trayY + i * (cardH + cardGap);
+          var hot = cardHover === i;
+          /* card: flat semi-transparent, crisp highlight on hover */
+          ctx.fillStyle = hot ? 'rgba(16,34,38,0.92)' : 'rgba(10,24,30,0.82)';
+          ctx.fillRect(trayX, cy, trayW, cardH);
+          ctx.strokeStyle = hot ? s.hi : 'rgba(110,220,200,0.28)';
+          ctx.lineWidth = hot ? 2 : 1;
+          ctx.strokeRect(trayX + 0.5, cy + 0.5, trayW - 1, cardH - 1);
+          /* grab handle: three grip ridges */
+          ctx.fillStyle = hot ? s.hi : 'rgba(150,190,180,0.5)';
+          for (var hLine = 0; hLine < 3; hLine++) ctx.fillRect(trayX + 8, cy + 22 + hLine * 8, 5, 3);
+          /* colour swatch + name + description */
+          ctx.fillStyle = s.color;
+          ctx.fillRect(trayX + 24, cy + 8, 30, cardH - 16);
+          ctx.strokeStyle = s.hi; ctx.lineWidth = 1;
+          ctx.strokeRect(trayX + 24.5, cy + 8.5, 29, cardH - 17);
+          TL.text(ctx, s.name, trayX + 64, cy + 9, 8, hot ? '#e8fff4' : '#c8e8dc');
+          var dl = TL.wrap(ctx, s.desc, trayW - 74, 6);
+          for (var d = 0; d < dl.length && d < 2; d++) TL.text(ctx, dl[d], trayX + 64, cy + 24 + d * 11, 6, '#8fb8ac');
+          if (hot) TL.text(ctx, 'CLICK OR DRAG INTO THE CORE', trayX + 64, cy + cardH - 12, 6, s.hi);
+        }
+        /* hints, calm and static */
+        TL.text(ctx, 'TIP: ' + cfg.hints[0], trayX, slotY(n) + 34, 6, 'rgba(140,180,170,0.6)');
+
+        /* ============ RIGHT — CORE COLUMN ============ */
+        TL.text(ctx, 'CORE COLUMN', colX, 108, 9, '#59c8f0');
+        ctx.fillStyle = 'rgba(89,200,240,0.25)'; ctx.fillRect(colX, 118, colW, 1);
+        TL.text(ctx, 'SURFACE · YOUNGEST', colX, colY - 8, 6, '#7ab8a8', 'center');
+        /* column backing */
+        ctx.fillStyle = 'rgba(6,16,22,0.7)';
+        ctx.fillRect(colX - 8, colY - 4, colW + 16, n * (slotH + slotGap) + 4);
+        ctx.strokeStyle = 'rgba(110,220,200,0.3)';
+        ctx.strokeRect(colX - 7.5, colY - 3.5, colW + 15, n * (slotH + slotGap) + 3);
+        for (var s3 = 0; s3 < n; s3++) {
+          var sy = slotY(s3);
+          var filled = !!slots[s3];
+          var isHover = slotHover === s3 && carry;
+          /* empty slot: dark magnetic socket */
+          ctx.fillStyle = filled ? 'rgba(20,30,34,0.9)' : (isHover ? 'rgba(30,60,58,0.7)' : 'rgba(8,18,24,0.85)');
+          ctx.fillRect(colX, sy, colW, slotH);
+          ctx.strokeStyle = wrong[s3] ? '#f05848' : (isHover ? '#7ef0c8' : 'rgba(110,220,200,0.35)');
+          ctx.lineWidth = wrong[s3] || isHover ? 2 : 1;
+          ctx.strokeRect(colX + 0.5, sy + 0.5, colW - 1, slotH - 1);
+          ctx.lineWidth = 1;
+          if (filled) {
+            drawRock(ctx, colX + 2, sy + 2, colW - 4, slotH - 4, slots[s3]);
+            TL.text(ctx, byId[slots[s3]].name, colX + 12, sy + 8, 7, '#0c1216');
+          } else {
+            TL.text(ctx, 'DROP LAYER HERE', colX + colW / 2, sy + slotH / 2 - 4, 6, 'rgba(120,180,170,0.45)', 'center');
+          }
+          /* scanner sweep: bright line gliding across the fresh layer */
+          if (scans[s3] > 0) {
+            var pr = 1 - scans[s3] / 0.9;
+            var lx = colX + pr * colW;
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, scans[s3] * 2.5) * 0.9;
+            ctx.fillStyle = '#9ffce0';
+            ctx.fillRect(lx, sy + 1, 3, slotH - 2);
+            ctx.globalAlpha *= 0.35;
+            ctx.fillRect(lx - 12, sy + 1, 12, slotH - 2);
+            ctx.restore();
+          }
+          /* mechanical lock animation: converging brackets + tick marks */
+          if (locks[s3] > 0) {
+            var lp = 1 - locks[s3] / 0.65;         /* 0..1 */
+            var inset = (1 - lp) * 14;
+            ctx.strokeStyle = wrong[s3] ? '#f05848' : '#7ef0c8';
+            ctx.lineWidth = 2;
+            var L = 12;
+            ctx.beginPath();
+            ctx.moveTo(colX + inset, sy + 4); ctx.lineTo(colX + inset, sy + 4 + L);
+            ctx.moveTo(colX + colW - inset, sy + 4); ctx.lineTo(colX + colW - inset, sy + 4 + L);
+            ctx.moveTo(colX + inset, sy + slotH - 4); ctx.lineTo(colX + inset, sy + slotH - 4 - L);
+            ctx.moveTo(colX + colW - inset, sy + slotH - 4); ctx.lineTo(colX + colW - inset, sy + slotH - 4 - L);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+          }
+        }
+        TL.text(ctx, 'BEDROCK · OLDEST', colX, slotY(n) + 12, 6, '#7ab8a8', 'center');
+
+        /* ---- ANALYZE CORE [E] ---- */
+        var ready = allFilled();
+        var btnY2 = slotY(n) + 26;
+        var hot2 = mx >= colX && mx <= colX + colW && my >= btnY2 && my <= btnY2 + 40;
+        ctx.fillStyle = ready ? (hot2 ? 'rgba(26,72,64,0.95)' : 'rgba(10,40,36,0.92)') : 'rgba(10,20,24,0.7)';
+        ctx.fillRect(colX, btnY2, colW, 40);
+        ctx.strokeStyle = ready ? (hot2 ? '#7ef0c8' : '#3a9a84') : 'rgba(110,220,200,0.15)';
+        ctx.strokeRect(colX + 0.5, btnY2 + 0.5, colW - 1, 39);
+        TL.text(ctx, 'ANALYZE CORE', colX + colW / 2, btnY2 + 10, 9, ready ? '#aef0dd' : 'rgba(140,180,170,0.4)', 'center');
+        TL.text(ctx, ready ? '[ E ]' : 'FILL ALL ' + n + ' SLOTS', colX + colW / 2, btnY2 + 26, 6, ready ? '#6ee6c8' : 'rgba(120,160,150,0.4)', 'center');
+
+        /* ---- carried specimen follows the cursor ---- */
+        if (carry) {
+          drawRock(ctx, mx - 70, my - 22, 140, 44, carry.id, true);
+          TL.text(ctx, byId[carry.id].name, mx - 66, my - 14, 7, '#e8fff4');
+        }
+
+        /* validation sweep line during analysis */
+        if (phase === 'analyze') {
+          var sp = Math.min(1, scanT / (n * 0.45));
+          var sweepY = slotY(n - 1) + slotH - sp * (n * (slotH + slotGap));
+          ctx.save();
+          ctx.globalAlpha = 0.8;
+          ctx.fillStyle = 'rgba(126,240,200,0.5)';
+          ctx.fillRect(colX - 8, sweepY, colW + 16, 2);
+          ctx.restore();
+        }
+      }
+    };
+    /* test/introspection handle */
+    g.state = function () { return { slots: slots, tray: tray, carry: carry, phase: phase, allFilled: allFilled() }; };
     return g;
   };
 
@@ -1002,16 +1271,19 @@
   }
   builders.mosaic = function (cfg) {
     var img = mosaicImage();
-    var cellW = 240 / cfg.cols, cellH = 200 / cfg.rows;
+    var cellW = 240 / cfg.cols, cellH = 200 / cfg.rows;   /* source tile size in the image */
     var rev = [], total = cfg.cols * cfg.rows;
     for (var i = 0; i < total; i++) rev.push(false);
     var revealed = 0, phase = 'dig', sel = -1;
     var gx = (TL.W - 240 - 320) / 2, gy = 130;
-    var dw = cellW * 1.5, dh = cellH * 1.5; /* drawn cell size */
+    var dw = cellW * 1.5, dh = cellH * 1.5; /* drawn cell size == grid pitch */
     var g = {
       update: function (dt) {
         if (phase === 'dig') {
           if (TL.mouse.clicked) {
+            /* strict 1-to-1 mapping: the cell you click IS the piece you unlock.
+               Grid pitch equals the drawn cell size (dw x dh), so cell (c, r)
+               always reveals source tile (c, r) — never a random piece. */
             var c = Math.floor((TL.mouse.x - gx) / dw), r = Math.floor((TL.mouse.y - gy) / dh);
             if (c >= 0 && c < cfg.cols && r >= 0 && r < cfg.rows) {
               var idx = r * cfg.cols + c;
@@ -1038,22 +1310,27 @@
         frame(ctx, cfg.title, cfg.prompt);
         for (var i = 0; i < total; i++) {
           var c = i % cfg.cols, r = Math.floor(i / cfg.cols);
-          var x = gx + c * cellW, y = gy + r * cellH;
+          /* grid pitch == drawn cell size: each cell occupies exactly one
+             dw x dh slot, so clicks map 1-to-1 onto pieces */
+          var x = gx + c * dw, y = gy + r * dh;
           if (rev[i]) {
-            ctx.drawImage(img, c * cellW, r * cellH, cellW, cellH, x, y, cellW * 1.5, cellH * 1.5);
+            ctx.drawImage(img, c * cellW, r * cellH, cellW, cellH, x, y, dw, dh);
           } else {
             ctx.fillStyle = '#0a1418';
-            ctx.fillRect(x, y, cellW * 1.5 - 2, cellH * 1.5 - 2);
-            var rr = TL.RNG(i * 7 + ((MG.t * 8) | 0));
+            ctx.fillRect(x, y, dw - 2, dh - 2);
+            var rr = TL.RNG(i * 7 + 3);
             ctx.fillStyle = 'rgba(120,220,200,0.25)';
-            for (var n = 0; n < 6; n++) ctx.fillRect(x + rr() * cellW * 1.4, y + rr() * cellH * 1.4, 3, 2);
+            for (var n = 0; n < 6; n++) ctx.fillRect(x + rr() * (dw - 8), y + rr() * (dh - 8), 3, 2);
+            /* packet index so the mapping is visible while decoding */
+            TL.text(ctx, String(i + 1).padStart(2, '0'), x + 6, y + dh - 14, 6, 'rgba(140,220,200,0.5)');
           }
           ctx.strokeStyle = 'rgba(110,220,200,0.25)';
-          ctx.strokeRect(x + 0.5, y + 0.5, cellW * 1.5 - 1, cellH * 1.5 - 1);
+          ctx.strokeRect(x + 0.5, y + 0.5, dw - 1, dh - 1);
         }
-        TL.text(ctx, 'DATA PACKETS: ' + revealed + ' / ' + total, gx, gy + 200 * 1.5 + 12, 8, '#7ef0c8');
-        TL.text(ctx, 'CLICK CELLS TO TRANSMIT', gx + 240, gy + 200 * 1.5 + 12, 8, '#5a8a7a');
-        TL.text(ctx, 'SIGNAL 8½ bit/s · FRAME 11/22', TL.W - 60, gy + 200 * 1.5 + 12, 6, '#5a8a7a', 'right');
+        var gridH = cfg.rows * dh;
+        TL.text(ctx, 'DATA PACKETS: ' + revealed + ' / ' + total, gx, gy + gridH + 12, 8, '#7ef0c8');
+        TL.text(ctx, 'CLICK CELLS TO TRANSMIT', gx + 240, gy + gridH + 12, 8, '#5a8a7a');
+        TL.text(ctx, 'SIGNAL 8½ bit/s · FRAME 11/22', TL.W - 60, gy + gridH + 12, 6, '#5a8a7a', 'right');
         if (phase === 'question') {
           TL.panel(ctx, TL.W / 2 - 40, 100, TL.W / 2 + 100, 340, {});
           var qLines = TL.wrap(ctx, cfg.question, TL.W / 2 + 20, 9);
@@ -1119,9 +1396,11 @@
     if (MG.msgT > 0 && MG.msg) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, MG.msgT);
-      TL.panel(ctx, TL.W / 2 - 260, TL.H - 96, 520, 54, { corner: '#f0a050', bg: 'rgba(30,16,8,0.92)' });
-      var lines = TL.wrap(ctx, MG.msg, 480, 8);
-      for (var i = 0; i < lines.length; i++) TL.text(ctx, lines[i], TL.W / 2, TL.H - 86 + i * 13, 8, '#f0c090', 'center');
+      /* taller box + roomier leading so fail messages never crowd */
+      var fw = 560;
+      TL.panel(ctx, TL.W / 2 - fw / 2, TL.H - 104, fw, 64, { corner: '#f0a050', bg: 'rgba(30,16,8,0.92)' });
+      var lines = TL.wrap(ctx, MG.msg, fw - 70, 8);
+      for (var i = 0; i < lines.length; i++) TL.text(ctx, lines[i], TL.W / 2, TL.H - 92 + i * 14, 8, '#f0c090', 'center');
       ctx.restore();
     }
     if (MG.success) {

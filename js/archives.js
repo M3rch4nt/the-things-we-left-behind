@@ -126,14 +126,37 @@
       slides: [
         { t: 'A SECOND LANDING', art: 'viking2:0',
           n: 'Viking 2 followed Viking 1, landing at Utopia Planitia in September 1976.',
-          d: 'VIKING 2: "A different landing site. A different perspective."' },
+          d: 'VIKING 2: "A different landing site. A different perspective."',
+          scan: [
+            { label: 'LANDING SITE', text: 'UTOPIA PLANITIA · 47.97° N, 225.29° E — northern lowlands' },
+            { label: 'TOUCHDOWN', text: 'SEP 3 1976 · RETRO-BRAKE + LANDER LEGS · 224 m/s DESCENT' },
+            { label: 'SURFACE PRESSURE', text: '6.9 mbar · 0.7% OF EARTH SEA LEVEL' },
+            { label: 'SURFACE TEMP', text: '−66 °C AT TOUCHDOWN · RANGE −173 to +20 °C OVER A SOL' }
+          ] },
         { t: 'OBSERVING THE ENVIRONMENT', art: 'viking2:1',
-          n: 'Viking 2 studied its surroundings using instruments designed to investigate the Martian surface and atmosphere.' },
+          n: 'Viking 2 studied its surroundings using instruments designed to investigate the Martian surface and atmosphere.',
+          scan: [
+            { label: 'SOIL SAMPLE 1', text: 'FINE Aeolian DUST · SiO₂, Fe₂O₃ RICH · NO ORGANICS DETECTED' },
+            { label: 'SOIL SAMPLE 2', text: 'REACTIVE CHEMISTRY · O₂ RELEASE ON WETTING (PEROXIDES)' },
+            { label: 'BIOLOGY PKG', text: 'LR / PR / GEX — NO POSITIVE LIFE SIGNATURE, TWO SITES AGREE' },
+            { label: 'SAMPLE ARM', text: '3.5 m BOOM · TRENCH DEPTH 8–10 cm · FROST OBSERVED IN WINTER' }
+          ] },
         { t: 'WEATHER AND SEASONS', art: 'viking2:2',
           n: 'Long-term observations helped scientists study Martian weather and environmental conditions.',
-          d: 'VIKING 2: "Even a quiet landscape changes with time."' },
+          d: 'VIKING 2: "Even a quiet landscape changes with time."',
+          scan: [
+            { label: 'WIND', text: 'MEAN 7.7 m/s · GUSTS TO 30 m/s · SSE PREVAILING' },
+            { label: 'SEASONS', text: '4 MARTIAN YEARS LOGGED · WATER FROST EACH NORTHERN WINTER' },
+            { label: 'DUST OPTICAL DEPTH', text: '1.1 CLEAR SOLS · >5 DURING 1977 GLOBAL DUST STORMS' },
+            { label: 'ATMOSPHERE', text: '95% CO₂ · 2.7% N₂ · 1.6% Ar · TRACE O₂' }
+          ] },
         { t: 'TWO LANDERS, A BROADER PICTURE', art: 'viking2:3',
-          n: 'Together, the Viking missions provided scientists with observations from two different locations on Mars.' }
+          n: 'Together, the Viking missions provided scientists with observations from two different locations on Mars.',
+          scan: [
+            { label: 'TRANSMISSION', text: 'LAST CONTACT APR 11 1980 · BATTERY FAULT · ORBITER RELAY ENDED' },
+            { label: 'LOG DURATION', text: '1,281 SOLS ON SURFACE · SITE STILL MONITORED FROM ORBIT' },
+            { label: 'LEGACY', text: 'THE ONLY GROUND-TRUTH WEATHER RECORD OF UTOPIA FOR 40 YEARS' }
+          ] }
       ]
     },
 
@@ -390,18 +413,31 @@
     ingenuity: 'ingenuity', perseverance: 'perseverance', curiosity: 'curiosity', relay: 'relay'
   };
 
-  /* ================= SLIDESHOW RENDERER ================= */
-  /* A recovered-memory interface: warm mechanical casing around a
-     deep-navy display, terminal-green indicators, scanlines. */
+    /* ================= SLIDESHOW RENDERER =================
+     Two-Column Telemetry Card:
+       - unified full-width header bar (category/title left, dates + X right)
+       - 50/50 body split with a vertical divider
+       - left column: clean visual stage (no labels, no watermarks)
+       - right column: FRAME indicator -> section header -> NARRATION LOG
+         -> persona tag row -> anchored footer (PREV | dots | NEXT)
+     All slide photos are preloaded when the archive opens ("RETRIEVING"
+     gate) and slide changes are double-buffered crossfades — the opaque
+     backing panel never lets the live world bleed through. */
   var SL = TL.Slides = {
-    id: null, slide: 0, ret: 'play', t: 0, trans: 0, info: null
+    id: null, slide: 0, ret: 'play', t: 0, trans: 0, info: null,
+    snap: null, hasSnap: false,          /* double-buffer snapshot */
+    warm: { total: 0, got: 0 },          /* preload gate */
+    scanOn: false, lensOn: false
   };
 
   /* layout constants (TL 960x540) */
-  var V = { x: 20, y: 76, w: 600, h: 338 };     /* 16:9-ish scene viewport */
-  var RC = { x: 636, w: 304 };                  /* right column */
-  var CAP = { y: 420, h: 54 };                  /* caption bar */
-  var FTR = { y: 492, h: 32 };                  /* footer buttons */
+  var HDR_H = 60;                                        /* unified header bar */
+  var XRECT = { x: 900, y: 14, w: 36, h: 32 };           /* close button */
+  var V = { x: 36, y: 100, w: 400, h: 300 };             /* visual stage (left) */
+  var CHIP = { y: 416, h: 28 };                          /* LENS / SCAN chips */
+  var RC = { x: 508, w: 424 };                           /* right column */
+  var FTR = { y: 478, h: 30 };                           /* anchored footer */
+  var SPLIT_X = 486;                                     /* vertical divider */
 
   function inRect(m, x, y, w, h) { return m.x >= x && m.x <= x + w && m.y >= y && m.y <= y + h; }
   function pad2(n2) { return (n2 < 10 ? '0' : '') + n2; }
@@ -411,12 +447,19 @@
   SL.open = function (id, ret) {
     if (!TL.D.ARCHIVES[id]) return;
     SL.id = id;
-    var n = TL.D.ARCHIVES[id].slides.length;
+    var a = TL.D.ARCHIVES[id], n = a.slides.length;
     SL.slide = TL.clamp(TL.S.archPos[id] || 0, 0, n - 1);
     SL.ret = ret || 'play';
     SL.info = null;
+    SL.scanOn = false; SL.lensOn = false;
+    SL.hasSnap = false;
     SL.trans = 0.4;
     SL.t = 0;
+    /* preload every slide photo up front: no gaps, no placeholders */
+    SL.warm = { total: n, got: 0 };
+    var list = [];
+    for (var i = 0; i < n; i++) list.push({ key: 'sl:' + id + ':' + i, base: 'assets/archives/' + id + '/', file: 'frame' + (i + 1) });
+    TL.Images.warm(list, function () { SL.warm.got = SL.warm.total; }, function (c) { SL.warm.got = c; });
     TL.audio.static(0.3, 0.05);
     TL.audio.ui();
     if (TL.G.setMode) TL.G.setMode('slides'); else TL.G.mode = 'slides';
@@ -426,9 +469,15 @@
     var n = SL.a().slides.length;
     var s2 = TL.clamp(SL.slide + dir, 0, n - 1);
     if (s2 === SL.slide) return;
+    /* double-buffer: snapshot the current stage so the crossfade has a
+       fully rendered "old" frame underneath — never an empty gap */
+    if (!SL.snap) { SL.snap = document.createElement('canvas'); SL.snap.width = V.w; SL.snap.height = V.h; }
+    SL.snap.getContext('2d').drawImage(TL.canvas, V.x, V.y, V.w, V.h, 0, 0, V.w, V.h);
+    SL.hasSnap = true;
     SL.slide = s2;
     SL.info = null;
-    SL.trans = 0.32;
+    SL.scanOn = false;
+    SL.trans = 0.35;
     TL.S.archPos[SL.id] = s2;
     TL.save();
     TL.audio.static(0.18, 0.045);
@@ -449,8 +498,12 @@
   SL.update = function (dt) {
     if (!SL.id) return;
     SL.t += dt;
-    if (SL.trans > 0) { SL.trans = Math.max(0, SL.trans - dt); return; }
+    if (SL.trans > 0) SL.trans = Math.max(0, SL.trans - dt);   /* crossfade decay */
     var a = SL.a(), n = a.slides.length, last = SL.slide >= n - 1;
+    var s2 = a.slides[SL.slide];
+    /* tools */
+    if (TL.hit('m')) { SL.lensOn = !SL.lensOn; TL.audio.ui(); }
+    if (TL.hit('s') && s2.scan) { SL.scanOn = !SL.scanOn; TL.audio.ui(); }
     /* keyboard / touch buttons */
     if (SL.slide > 0 && (TL.hit('arrowleft') || TL.jumpHit())) { SL.change(-1); return; }
     if (TL.hit('arrowright') || TL.actHit()) {
@@ -461,17 +514,18 @@
     /* mouse / touch taps */
     var m = TL.mouse;
     if (m.clicked) {
-      if (inRect(m, 908, 14, 34, 34)) { SL.close(); return; }                     /* close */
-      if (inRect(m, 20, FTR.y, 130, FTR.h)) {                                     /* prev */
+      if (inRect(m, XRECT.x, XRECT.y, XRECT.w, XRECT.h)) { SL.close(); return; }
+      if (inRect(m, RC.x, FTR.y, 108, FTR.h)) {                                    /* prev */
         if (SL.slide > 0) { SL.change(-1); return; }
         TL.audio.deny(); return;
       }
-      if (inRect(m, 690, FTR.y, 250, FTR.h)) {                                    /* next / return */
+      if (inRect(m, RC.x + RC.w - 108, FTR.y, 108, FTR.h)) {                       /* next / return */
         if (last) SL.close(); else SL.change(1);
         return;
       }
+      if (inRect(m, V.x, CHIP.y, 120, CHIP.h)) { SL.lensOn = !SL.lensOn; TL.audio.ui(); return; }
+      if (s2.scan && inRect(m, V.x + 128, CHIP.y, 120, CHIP.h)) { SL.scanOn = !SL.scanOn; TL.audio.ui(); return; }
       /* hotspots */
-      var s2 = a.slides[SL.slide];
       if (s2.hs) {
         for (var i = 0; i < s2.hs.length; i++) {
           var h = s2.hs[i];
@@ -483,8 +537,28 @@
           }
         }
       }
+      if (SL.info) { SL.info = null; TL.audio.ui(); return; }   /* tap anywhere dismisses */
     }
   };
+
+  /* draw the slide's visual (photo if imported, drawn art otherwise).
+     Photos render inside the fixed-aspect stage container with
+     KEEP_ASPECT_CENTERED semantics: whole frame visible, centred,
+     letterboxed onto the opaque stage fill — no cropping, no stretch,
+     and the opaque backing seals the world out. */
+  function drawSlideVisual(ctx, img, w, h) {
+    if (img) {
+      TL.rect(ctx, 0, 0, w, h, '#04080e');
+      TL.Images.drawContain(ctx, img, 0, 0, w, h);
+      var gph = ctx.createLinearGradient(0, 0, 0, h);
+      gph.addColorStop(0, 'rgba(4,10,16,0.35)'); gph.addColorStop(0.45, 'rgba(4,10,16,0)');
+      gph.addColorStop(1, 'rgba(4,10,16,0.45)');
+      ctx.fillStyle = gph; ctx.fillRect(0, 0, w, h);
+      TL.ArchiveArt.scan(ctx, w, h);
+    } else {
+      TL.ArchiveArt.paint(SL.id, SL.slide, ctx, w, h, SL.t);
+    }
+  }
 
   SL.draw = function (ctx) {
     if (!SL.id) return;
@@ -492,144 +566,196 @@
     var a = SL.a(), s2 = a.slides[SL.slide], n = a.slides.length, last = SL.slide >= n - 1;
     var ac = a.accent;
 
-    /* warm mechanical casing */
+    /* ---- persistent opaque backing: the world is fully sealed off ---- */
+    ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, TL.W, TL.H);
     var cg = ctx.createLinearGradient(0, 0, 0, TL.H);
-    cg.addColorStop(0, '#1c1610'); cg.addColorStop(0.55, '#14100c'); cg.addColorStop(1, '#0d0a08');
+    cg.addColorStop(0, '#1c1610'); cg.addColorStop(0.55, '#15100c'); cg.addColorStop(1, '#0d0a08');
     ctx.fillStyle = cg; ctx.fillRect(0, 0, TL.W, TL.H);
-    ctx.strokeStyle = '#3e2f20'; ctx.lineWidth = 3;
-    ctx.strokeRect(5, 5, TL.W - 10, TL.H - 10);
-    ctx.strokeStyle = 'rgba(240,200,140,0.12)'; ctx.lineWidth = 1;
-    ctx.strokeRect(9, 9, TL.W - 18, TL.H - 18);
-    /* rivets */
-    ctx.fillStyle = '#4e3c28';
-    for (var rv = 0; rv < 12; rv++) {
-      ctx.fillRect(14 + rv * 78, 11, 3, 3);
-      ctx.fillRect(14 + rv * 78, TL.H - 14, 3, 3);
-    }
 
-    /* header */
-    TL.text(ctx, 'MISSION ARCHIVE // ' + SL.id.toUpperCase(), 24, 16, 7, '#7ef0c8');
-    TL.text(ctx, a.name, 24, 30, 14, ac);
-    TL.text(ctx, 'MISSION DATES: ' + a.dates, 24, 54, 7, '#8a9aa8');
-    TL.text(ctx, 'PERSONALITY PROFILE: ' + a.persona, 900, 54, 7, '#6a8a9a', 'right');
-    /* terminal LEDs */
-    for (var i = 0; i < 5; i++) {
-      var on = Math.sin(SL.t * (2 + i) + i * 1.3) > -0.2;
-      ctx.fillStyle = on ? '#7ef0c8' : '#1e4a3e';
-      ctx.fillRect(700 + i * 16, 34, 8, 8);
-    }
-    /* close button */
-    TL.panel(ctx, 908, 14, 34, 34, { bg: 'rgba(48,20,14,0.9)', corner: '#f0a050' });
-    TL.text(ctx, 'X', 925, 24, 10, '#f0a050', 'center');
+    /* ---- unified full-width header bar ---- */
+    ctx.fillStyle = 'rgba(12,16,20,0.9)'; ctx.fillRect(0, 0, TL.W, HDR_H);
+    ctx.fillStyle = 'rgba(126,240,200,0.28)'; ctx.fillRect(0, HDR_H - 1, TL.W, 1);
+    TL.text(ctx, 'MISSION ARCHIVE', 24, 10, 6, '#59c8f0');
+    TL.text(ctx, a.name, 24, 24, 14, ac);
+    TL.text(ctx, a.dates, 888, 24, 9, '#8a9aa8', 'right');
+    TL.panel(ctx, XRECT.x, XRECT.y, XRECT.w, XRECT.h, { bg: 'rgba(40,20,14,0.92)', corner: '#f0a050' });
+    TL.text(ctx, 'X', XRECT.x + 18, XRECT.y + 10, 10, '#f0a050', 'center');
 
-    /* scene viewport */
-    TL.panel(ctx, V.x - 6, V.y - 6, V.w + 12, V.h + 12, { bg: 'rgba(6,16,28,0.94)', border: 'rgba(90,140,170,0.45)', corner: ac });
+    /* ---- 50/50 body split with vertical divider ---- */
+    ctx.fillStyle = 'rgba(126,240,200,0.16)'; ctx.fillRect(SPLIT_X, HDR_H + 12, 1, TL.H - 24 - HDR_H);
+
+    /* ============ LEFT — CLEAN VISUAL STAGE ============ */
+    TL.panel(ctx, V.x - 6, V.y - 6, V.w + 12, V.h + 12, { bg: 'rgba(6,16,28,0.96)', border: 'rgba(90,140,170,0.45)', corner: ac });
     ctx.save();
     ctx.beginPath(); ctx.rect(V.x, V.y, V.w, V.h); ctx.clip();
     ctx.translate(V.x, V.y);
-    var simg = TL.Images ? TL.Images.slide(SL.id, SL.slide) : null;
-    if (simg) {
-      /* user-imported photo replaces the drawn scene, archival grade-in on top */
-      TL.rect(ctx, 0, 0, V.w, V.h, '#04080e');
-      TL.Images.drawCover(ctx, simg, 0, 0, V.w, V.h);
-      var gph = ctx.createLinearGradient(0, 0, 0, V.h);
-      gph.addColorStop(0, 'rgba(4,10,16,0.6)'); gph.addColorStop(0.45, 'rgba(4,10,16,0)'); gph.addColorStop(1, 'rgba(4,10,16,0.65)');
-      ctx.fillStyle = gph; ctx.fillRect(0, 0, V.w, V.h);
-      TL.ArchiveArt.scan(ctx, V.w, V.h);
+    var warmDone = SL.warm.got >= SL.warm.total;
+    var img = TL.Images ? TL.Images.slide(SL.id, SL.slide) : null;
+    var cross = SL.trans > 0;
+
+    if (cross && SL.hasSnap) {
+      /* double-buffered crossfade: old frame beneath, new frame dissolving in */
+      ctx.drawImage(SL.snap, 0, 0, V.w, V.h);
+      ctx.save();
+      ctx.globalAlpha = 1 - SL.trans / 0.35;
+      drawSlideVisual(ctx, img, V.w, V.h);
+      ctx.restore();
     } else {
-      TL.ArchiveArt.paint(SL.id, SL.slide, ctx, V.w, V.h, SL.t);
+      drawSlideVisual(ctx, img, V.w, V.h);
     }
-    /* archival frame labels */
-    TL.text(ctx, 'ARCHIVE ' + SL.id.toUpperCase() + ' · FRAME ' + (SL.slide + 1) + '/' + n, 10, 8, 6, 'rgba(126,240,200,0.75)');
-    if (Math.sin(SL.t * 5) > 0) TL.text(ctx, '\u25CF REC', V.w - 46, 8, 6, '#f0a050');
-    /* hotspot markers */
+
+    /* SCAN [S] telemetry overlay: instrument data layered over the imagery */
+    if (SL.scanOn && s2.scan) {
+      var sy0 = 8, sh = s2.scan.length * 26 + 16, sx = V.w - 172, sw = 164;
+      ctx.fillStyle = 'rgba(4,14,20,0.82)';
+      ctx.fillRect(sx, sy0, sw, sh);
+      ctx.strokeStyle = 'rgba(126,240,200,0.4)'; ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 0.5, sy0 + 0.5, sw - 1, sh - 1);
+      for (var si = 0; si < s2.scan.length; si++) {
+        var row = s2.scan[si];
+        TL.text(ctx, row.label, sx + 10, sy0 + 12 + si * 26, 6, '#59c8f0');
+        var rl = TL.wrap(ctx, row.text, sw - 20, 6);
+        for (var ri = 0; ri < rl.length && ri < 2; ri++) {
+          TL.text(ctx, rl[ri], sx + 10, sy0 + 24 + si * 26 + ri * 9, 6, '#aef0dd');
+        }
+      }
+    }
+    /* hotspot markers (the only allowed overlay on the artwork) */
     if (s2.hs) {
-      for (i = 0; i < s2.hs.length; i++) {
-        var h = s2.hs[i];
-        var hx = h.x * V.w + h.w * V.w / 2, hy = h.y * V.h + h.h * V.h / 2;
-        var pulse = 0.6 + 0.4 * Math.sin(SL.t * 4 + i * 2);
-        ctx.strokeStyle = SL.info === h ? '#7ef0c8' : 'rgba(126,240,200,' + (0.4 + pulse * 0.5) + ')';
+      for (var hi = 0; hi < s2.hs.length; hi++) {
+        var h2 = s2.hs[hi];
+        var hx = h2.x * V.w + h2.w * V.w / 2, hy = h2.y * V.h + h2.h * V.h / 2;
+        var pulse = 0.6 + 0.4 * Math.sin(SL.t * 4 + hi * 2);
+        ctx.strokeStyle = SL.info === h2 ? '#7ef0c8' : 'rgba(126,240,200,' + (0.4 + pulse * 0.5) + ')';
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(h.x * V.w, h.y * V.h, h.w * V.w, h.h * V.h);
-        ctx.fillStyle = SL.info === h ? '#7ef0c8' : 'rgba(126,240,200,' + (0.55 + pulse * 0.35) + ')';
+        ctx.strokeRect(h2.x * V.w, h2.y * V.h, h2.w * V.w, h2.h * V.h);
+        ctx.fillStyle = SL.info === h2 ? '#7ef0c8' : 'rgba(126,240,200,' + (0.55 + pulse * 0.35) + ')';
         ctx.beginPath();
         ctx.moveTo(hx, hy - 5 - pulse * 2); ctx.lineTo(hx + 5 + pulse * 2, hy);
         ctx.lineTo(hx, hy + 5 + pulse * 2); ctx.lineTo(hx - 5 - pulse * 2, hy);
         ctx.closePath(); ctx.fill();
       }
+      ctx.lineWidth = 1;
     }
-    /* retrieval transition */
-    if (SL.trans > 0) {
-      var tp = SL.trans / 0.4;
-      ctx.fillStyle = 'rgba(6,14,24,' + (0.75 - tp * 0.25) + ')';
+    /* retrieving gate: shown until preloading completes (brief) */
+    if (!warmDone || (cross && !img && !SL.hasSnap)) {
+      ctx.fillStyle = 'rgba(6,14,24,0.85)'; ctx.fillRect(0, 0, V.w, V.h);
+      TL.text(ctx, 'RETRIEVING ARCHIVED MEMORY', V.w / 2, V.h / 2 - 10, 8, '#7ef0c8', 'center');
+      var pct = SL.warm.total ? SL.warm.got / SL.warm.total : 0;
+      ctx.fillStyle = 'rgba(6,14,24,0.8)'; ctx.fillRect(V.w / 2 - 110, V.h / 2 + 10, 220, 10);
+      ctx.fillStyle = '#7ef0c8'; ctx.fillRect(V.w / 2 - 108, V.h / 2 + 12, 216 * pct, 6);
+    } else if (cross) {
+      /* subtle retrieval shimmer during the crossfade */
+      var tp = SL.trans / 0.35;
+      ctx.fillStyle = 'rgba(6,14,24,' + (tp * 0.25) + ')';
       ctx.fillRect(0, 0, V.w, V.h);
-      var r = TL.RNG((performance.now() * 0.05) | 0);
-      ctx.globalAlpha = 0.4;
-      for (var st = 0; st < 60; st++) {
-        ctx.fillStyle = r() > 0.5 ? '#8fffe0' : '#1b4a44';
-        ctx.fillRect(r() * V.w, r() * V.h, 30 + r() * 100, 1 + r() * 2);
-      }
-      ctx.globalAlpha = 1;
-      var bar = (1 - tp) * V.w;
-      ctx.fillStyle = 'rgba(126,240,200,0.35)';
-      ctx.fillRect(0, bar - 2, V.w, 4);
-      TL.text(ctx, 'RETRIEVING ARCHIVED MEMORY', V.w / 2, V.h / 2 - 8, 8, '#7ef0c8', 'center');
-      ctx.fillStyle = 'rgba(6,14,24,0.6)';
-      ctx.fillRect(V.w / 2 - 110, V.h / 2 + 12, 220, 10);
-      ctx.fillStyle = '#7ef0c8';
-      ctx.fillRect(V.w / 2 - 108, V.h / 2 + 14, 216 * (1 - tp), 6);
     }
     ctx.restore();
 
-    /* caption bar: dialogue or hotspot info */
-    var cap = SL.info ? ('\u25C8 ' + SL.info.label + ' — ' + SL.info.text) : (s2.d || '');
-    if (cap) {
-      TL.panel(ctx, V.x - 6, CAP.y, V.w + 12, CAP.h, { bg: 'rgba(6,16,28,0.92)', border: 'rgba(90,140,170,0.3)', corner: SL.info ? '#7ef0c8' : ac });
-      var cl = TL.wrap(ctx, cap, V.w - 28, 7);
-      for (i = 0; i < Math.min(cl.length, 4); i++) {
-        TL.text(ctx, cl[i], V.x + 10, CAP.y + 7 + i * 12, 7, SL.info ? '#c8f0e0' : '#e8e0d0');
+    /* LENS [M] magnifier — floats over the stage, magnifies the imagery */
+    if (SL.lensOn && img) {
+      var mx = TL.mouse.x, my = TL.mouse.y;
+      if (mx > V.x && mx < V.x + V.w && my > V.y && my < V.y + V.h) {
+        var LR = 52;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(mx, my, LR, 0, Math.PI * 2); ctx.clip();
+        /* magnify the cover image ×2.4 around the cursor */
+        ctx.translate(mx, my); ctx.scale(2.4, 2.4); ctx.translate(-mx, -my);
+        ctx.translate(-V.x, -V.y);
+        TL.rect(ctx, V.x, V.y, V.w, V.h, '#04080e');
+        TL.Images.drawContain(ctx, img, V.x, V.y, V.w, V.h);
+        ctx.restore();
+        /* lens rim + crosshair */
+        ctx.strokeStyle = '#c8e8f8'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(mx, my, LR, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(126,240,200,0.7)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mx - 10, my); ctx.lineTo(mx + 10, my);
+        ctx.moveTo(mx, my - 10); ctx.lineTo(mx, my + 10);
+        ctx.stroke();
+        ctx.lineWidth = 1;
       }
     }
 
-    /* right column */
-    TL.panel(ctx, RC.x - 6, V.y - 6, RC.w + 12, V.h + CAP.h + 16, { bg: 'rgba(10,16,22,0.88)', border: 'rgba(90,140,170,0.3)', corner: ac });
-    TL.text(ctx, 'FRAME ' + (SL.slide + 1) + ' OF ' + n, RC.x, V.y + 2, 6, '#6a8a9a');
-    var tl2 = TL.wrap(ctx, s2.t, RC.w, 10);
-    for (i = 0; i < tl2.length; i++) TL.text(ctx, tl2[i], RC.x, V.y + 18 + i * 15, 10, ac);
-    var ty = V.y + 18 + tl2.length * 15 + 12;
-    ctx.fillStyle = 'rgba(126,240,200,0.25)'; ctx.fillRect(RC.x, ty, RC.w, 1);
-    TL.text(ctx, 'NARRATION LOG', RC.x, ty + 8, 6, '#59c8f0');
-    var nl = TL.wrap(ctx, s2.n, RC.w, 7);
-    for (i = 0; i < nl.length; i++) TL.text(ctx, nl[i], RC.x, ty + 22 + i * 12, 7, '#c8d8dc');
-    /* hotspot hint */
-    if (s2.hs) TL.text(ctx, '\u25C8 CLICK MARKED POINTS TO INSPECT', RC.x, V.y + V.h - 60, 6, '#6ad8b0');
-    /* closing thought (last slide) */
-    if (last) {
-      var cy = V.y + V.h - 26;
-      var cll = TL.wrap(ctx, '"' + a.closing + '"', RC.w - 8, 7);
-      for (i = 0; i < cll.length; i++) TL.text(ctx, cll[i], RC.x, cy - (cll.length - 1 - i) * 12, 7, ac);
+    /* stage control chips */
+    var lensHot = inRect(TL.mouse, V.x, CHIP.y, 120, CHIP.h);
+    TL.panel(ctx, V.x, CHIP.y, 120, CHIP.h, { bg: SL.lensOn ? 'rgba(20,60,56,0.95)' : 'rgba(8,22,28,0.92)', corner: lensHot || SL.lensOn ? '#7ef0c8' : '#3a7a6a' });
+    TL.text(ctx, SL.lensOn ? 'LENS ON [M]' : 'LENS [M]', V.x + 60, CHIP.y + 10, 7, SL.lensOn ? '#aef0dd' : '#7ab8a8', 'center');
+    if (s2.scan) {
+      var scanHot = inRect(TL.mouse, V.x + 128, CHIP.y, 120, CHIP.h);
+      TL.panel(ctx, V.x + 128, CHIP.y, 120, CHIP.h, { bg: SL.scanOn ? 'rgba(20,60,56,0.95)' : 'rgba(8,22,28,0.92)', corner: scanHot || SL.scanOn ? '#7ef0c8' : '#3a7a6a' });
+      TL.text(ctx, SL.scanOn ? 'SCAN ON [S]' : 'SCAN [S]', V.x + 188, CHIP.y + 10, 7, SL.scanOn ? '#aef0dd' : '#7ab8a8', 'center');
     }
 
-    /* footer: prev / counter / next-return */
-    var prevOn = SL.slide > 0;
-    TL.panel(ctx, 20, FTR.y, 130, FTR.h, { bg: 'rgba(10,20,26,0.92)', corner: prevOn ? ac : '#3a3230' });
-    TL.text(ctx, '\u25C4 PREV', 85, FTR.y + 11, 8, prevOn ? ac : '#5a4a44', 'center');
-    /* counter + progress ticks */
-    TL.text(ctx, pad2(SL.slide + 1) + ' / ' + pad2(n), TL.W / 2, FTR.y + 2, 9, '#e8e0d0', 'center');
-    var tickW = 9, total = n * tickW, tx0 = TL.W / 2 - total / 2;
-    for (i = 0; i < n; i++) {
-      ctx.fillStyle = i <= SL.slide ? ac : 'rgba(90,110,120,0.35)';
-      ctx.fillRect(tx0 + i * tickW, FTR.y + 18, tickW - 2, 7);
+    /* ============ RIGHT — INFORMATION & CONTROLS ============ */
+    /* frame indicator */
+    TL.text(ctx, 'FRAME ' + pad2(SL.slide + 1) + ' OF ' + pad2(n), RC.x, 82, 7, '#6a8a9a');
+    /* bold section header */
+    var tl2 = TL.wrap(ctx, s2.t, RC.w, 13);
+    for (var t2 = 0; t2 < tl2.length; t2++) TL.text(ctx, tl2[t2], RC.x, 98 + t2 * 17, 13, ac);
+    var ty = 98 + tl2.length * 17 + 8;
+    ctx.fillStyle = 'rgba(216,178,90,0.3)'; ctx.fillRect(RC.x, ty, RC.w, 1);
+    ty += 14;
+
+    /* NARRATION LOG (or point inspection while a hotspot is open) */
+    if (SL.info) {
+      TL.text(ctx, 'POINT INSPECTION', RC.x, ty, 7, '#7ef0c8');
+      TL.text(ctx, SL.info.label + ' — CLICK TO DISMISS', RC.x, ty + 14, 6, '#6ad8b0');
+      var il = TL.wrap(ctx, SL.info.text, RC.w, 9);
+      for (var i3 = 0; i3 < il.length; i3++) TL.text(ctx, il[i3], RC.x, ty + 30 + i3 * 15, 9, '#c8f0e0');
+      ty += 30 + il.length * 15 + 8;
+    } else {
+      TL.text(ctx, 'NARRATION LOG', RC.x, ty, 7, '#59c8f0');
+      var nl = TL.wrap(ctx, s2.n, RC.w, 9);
+      for (i3 = 0; i3 < nl.length; i3++) TL.text(ctx, nl[i3], RC.x, ty + 16 + i3 * 15, 9, '#c8d8dc');
+      ty += 16 + nl.length * 15 + 8;
+      if (s2.hs) { TL.text(ctx, '\u25C8 CLICK MARKED POINTS TO INSPECT', RC.x, ty, 6, '#6ad8b0'); ty += 14; }
+      /* recovered audio line */
+      if (s2.d) {
+        var dl2 = TL.wrap(ctx, s2.d, RC.w, 8);
+        for (var d3 = 0; d3 < dl2.length; d3++) TL.text(ctx, dl2[d3], RC.x, ty + d3 * 13, 8, ac);
+        ty += dl2.length * 13 + 6;
+      }
     }
-    var retLabel = last ? (SL.ret === 'archive' ? 'BACK TO ARCHIVE' : 'RETURN TO EXPLORATION') : 'NEXT \u25BA';
-    TL.panel(ctx, 690, FTR.y, 250, FTR.h, { bg: last ? 'rgba(20,44,34,0.92)' : 'rgba(10,20,26,0.92)', corner: ac });
-    TL.text(ctx, retLabel, 815, FTR.y + 11, 8, ac, 'center');
+    /* closing thought (last slide) */
+    if (last) {
+      var cll = TL.wrap(ctx, '"' + a.closing + '"', RC.w, 8);
+      for (var c2 = 0; c2 < cll.length; c2++) TL.text(ctx, cll[c2], RC.x, ty + c2 * 13, 8, ac);
+    }
+
+    /* inline persona tag row, anchored above the footer */
+    var tags = a.persona.split('·');
+    TL.text(ctx, 'PERSONALITY:', RC.x, 454, 6, '#6a8a9a');
+    var txx = RC.x + 84;
+    for (var g3 = 0; g3 < tags.length; g3++) {
+      var tag = tags[g3].trim();
+      if (!tag) continue;
+      TL.text(ctx, tag, txx, 454, 6, '#9fd8c8');
+      txx += tag.length * 6 + 12;
+      if (g3 < tags.length - 1) { TL.text(ctx, '\u2022', txx - 9, 454, 6, 'rgba(159,216,200,0.5)'); }
+    }
+
+    /* anchored footer inside the right column, aligned with text margins */
+    var prevOn = SL.slide > 0;
+    TL.panel(ctx, RC.x, FTR.y, 108, FTR.h, { bg: 'rgba(10,20,26,0.92)', corner: prevOn ? ac : '#3a3230' });
+    TL.text(ctx, '\u25C4 PREV', RC.x + 54, FTR.y + 10, 8, prevOn ? ac : '#5a4a44', 'center');
+    /* progress dots */
+    var dotR = 3, dotGap = 14, dotsW = n * dotGap, dx0 = RC.x + RC.w / 2 - dotsW / 2 + dotGap / 2;
+    for (var di = 0; di < n; di++) {
+      ctx.beginPath();
+      ctx.arc(dx0 + di * dotGap, FTR.y + FTR.h / 2, di === SL.slide ? dotR + 1 : dotR, 0, Math.PI * 2);
+      ctx.fillStyle = di === SL.slide ? ac : 'rgba(90,110,120,0.4)';
+      ctx.fill();
+    }
+    var retLabel = last ? (SL.ret === 'archive' ? 'BACK TO ARCHIVE' : 'RETURN') : 'NEXT \u25BA';
+    TL.panel(ctx, RC.x + RC.w - 108, FTR.y, 108, FTR.h, { bg: last ? 'rgba(20,44,34,0.92)' : 'rgba(10,20,26,0.92)', corner: ac });
+    TL.text(ctx, retLabel, RC.x + RC.w - 54, FTR.y + 10, 8, ac, 'center');
 
     /* screen scanlines + gentle static */
     ctx.save();
     ctx.globalAlpha = 0.06;
     ctx.fillStyle = '#04101a';
-    for (var sy = 0; sy < TL.H; sy += 3) ctx.fillRect(0, sy, TL.W, 1);
+    for (var sy2 = 0; sy2 < TL.H; sy2 += 3) ctx.fillRect(0, sy2, TL.W, 1);
     ctx.restore();
     TL.staticOverlay(ctx, 0.04);
     TL.crt(ctx, SL.t);

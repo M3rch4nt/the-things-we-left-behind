@@ -163,7 +163,52 @@
     }
   };
 
-  /* ================= CINEMATIC ================= */
+  /* ================= LOADING =================
+     Preloads the imported cinematic images before the intro runs,
+     so slides appear instantaneously with zero flicker and no
+     code-art placeholder is ever exposed. */
+  TL.Loading = {
+    cb: null, doneN: 0, total: 0, t: 0,
+    begin: function (cb) {
+      var self = TL.Loading;
+      self.cb = cb; self.doneN = 0; self.total = 0; self.t = 0;
+      var list = [];
+      for (var i = 0; i < 4; i++) list.push({ key: 'sc:' + i, base: 'assets/cinematic/', file: 'scene' + (i + 1) });
+      self.total = list.length;
+      TL.Images.warm(list, function () { self.doneN = self.total; });
+    },
+    update: function (dt) {
+      var self = TL.Loading;
+      self.t += dt;
+      if (self.doneN >= self.total && self.t > 0.5 && self.cb) {
+        var c = self.cb; self.cb = null; c();
+      }
+    },
+    draw: function (ctx) {
+      var self = TL.Loading;
+      ctx.fillStyle = '#04070c'; ctx.fillRect(0, 0, TL.W, TL.H);
+      var rr = TL.RNG(5);
+      for (var i = 0; i < 90; i++) {
+        ctx.globalAlpha = 0.15 + rr() * 0.5;
+        ctx.fillStyle = '#c8d8e8';
+        ctx.fillRect(rr() * TL.W | 0, rr() * TL.H | 0, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      TL.text(ctx, 'PREPARING TRANSMISSION', TL.W / 2, 240, 11, '#7ef0c8', 'center');
+      var pct = self.total ? self.doneN / self.total : 0;
+      TL.rect(ctx, TL.W / 2 - 130, 280, 260, 8, 'rgba(20,40,44,0.8)');
+      TL.rect(ctx, TL.W / 2 - 130, 280, 260 * pct, 8, '#7ef0c8');
+      TL.text(ctx, 'LOADING MISSION IMAGERY · ' + self.doneN + '/' + self.total, TL.W / 2, 300, 7, '#5a8a7a', 'center');
+      TL.crt(ctx, self.t);
+    }
+  };
+
+  /* ================= CINEMATIC =================
+     Photo-driven intro. Imported NASA backdrops only — the procedural
+     code-art scenes are fully stripped out so nothing placeholder-like
+     can ever flash between state changes. All four images are preloaded
+     before the sequence starts; consecutive slides crossfade smoothly
+     and each slide carries a slow Ken Burns zoom (100% -> 105%). */
   var Cin = { t: 0, scene: 0, sceneT: 0, done: false };
   TL.Cinematic = Cin;
 
@@ -172,396 +217,35 @@
       { at: 0.8, text: 'There\'s a world out there we\'ve spent centuries looking at.' },
       { at: 4.6, text: 'Red skies. Endless deserts.' },
       { at: 7.6, text: 'A place we know surprisingly little about.' }
-    ], draw: function (ctx, t, d) {
-      /* stars */
-      var rr = TL.RNG(11);
-      for (var i = 0; i < 140; i++) {
-        var sx = rr() * TL.W, sy = rr() * TL.H;
-        ctx.globalAlpha = 0.2 + 0.8 * Math.abs(Math.sin(d * 1.3 + i * 2));
-        ctx.fillStyle = i % 9 === 0 ? '#e8d0a0' : '#c8d8e8';
-        ctx.fillRect(sx | 0, sy | 0, 2, 2);
-      }
-      ctx.globalAlpha = 1;
-      /* sun flare */
-      ctx.globalAlpha = 0.12; ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(TL.W * 0.8, TL.H * 0.25, 90, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      /* Earth */
-      var ex = 300, ey = 300, er = 120 + Math.sin(d * 0.4) * 2;
-      ctx.save();
-      ctx.shadowColor = 'rgba(100,160,255,0.5)'; ctx.shadowBlur = 40;
-      var eg = ctx.createRadialGradient(ex - 40, ey - 40, 10, ex, ey, er);
-      eg.addColorStop(0, '#7ec8f8'); eg.addColorStop(0.6, '#2a72c8'); eg.addColorStop(1, '#0a2a5a');
-      ctx.fillStyle = eg;
-      ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      /* continents */
-      ctx.save();
-      ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI * 2); ctx.clip();
-      var rot = d * 6;
-      ctx.fillStyle = '#3a9a5a';
-      for (i = 0; i < 7; i++) {
-        var ca = (i * 50 + rot) % 360 * Math.PI / 180;
-        var cx2 = ex + Math.cos(ca) * er * 0.55;
-        var cy2 = ey + Math.sin(i * 3.1) * er * 0.45;
-        var cs = 16 + (i % 3) * 10;
-        ctx.fillRect(cx2 - cs / 2, cy2 - cs / 3, cs, cs * 0.7);
-        ctx.fillRect(cx2 - cs, cy2 - cs / 4, cs * 0.6, cs * 0.5);
-      }
-      /* clouds */
-      ctx.globalAlpha = 0.35; ctx.fillStyle = '#e8f4ff';
-      for (i = 0; i < 10; i++) {
-        var ca2 = (i * 33 + rot * 1.4) % 360 * Math.PI / 180;
-        var cx3 = ex + Math.cos(ca2) * er * 0.7;
-        var cy3 = ey + Math.sin(i * 2.3 + 1) * er * 0.6;
-        ctx.fillRect(cx3, cy3, 24, 6); ctx.fillRect(cx3 + 8, cy3 - 5, 16, 5);
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      /* terminator shadow */
-      ctx.globalAlpha = 0.4; ctx.fillStyle = '#000818';
-      ctx.beginPath(); ctx.arc(ex + 30, ey + 10, er, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      /* moon */
-      var ma = d * 0.5;
-      ctx.fillStyle = '#b8c4cc';
-      ctx.beginPath(); ctx.arc(ex + Math.cos(ma) * 190, ey + Math.sin(ma) * 60, 14, 0, Math.PI * 2); ctx.fill();
-      /* transmission rings */
-      var p = (d * 0.5) % 1;
-      ctx.globalAlpha = (1 - p) * 0.4; ctx.strokeStyle = '#7ef0c8'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(ex, ey, er + 20 + p * 50, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
-    } },
+    ] },
     { dur: 13, lines: [
       { at: 1.0, text: 'We built something that could go where we couldn\'t.' },
       { at: 5.2, text: 'Something small enough to fit inside a spacecraft —' },
       { at: 8.6, text: 'but brave enough to explore an entire planet.' }
-    ], draw: function (ctx, t, d) {
-      /* mission control room */
-      ctx.fillStyle = '#060a10'; ctx.fillRect(0, 0, TL.W, TL.H);
-      /* big wall screen with Mars */
-      var mg = ctx.createLinearGradient(0, 60, 0, 240);
-      mg.addColorStop(0, '#241a10'); mg.addColorStop(1, '#0c0c12');
-      ctx.fillStyle = mg; ctx.fillRect(240, 60, 480, 180);
-      ctx.strokeStyle = '#2a3a4a'; ctx.strokeRect(240, 60, 480, 180);
-      /* Mars on screen — vivid and well lit */
-      var mx = 480 + Math.sin(d * 0.3) * 8, my = 150, mr = 58;
-      var mgrad = ctx.createRadialGradient(mx - 22, my - 22, 6, mx, my, mr);
-      mgrad.addColorStop(0, '#ffb088'); mgrad.addColorStop(0.45, '#e08a50'); mgrad.addColorStop(0.78, '#c86a3c'); mgrad.addColorStop(1, '#8a4228');
-      ctx.fillStyle = mgrad; ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
-      /* surface features (clipped to the disc) */
-      ctx.save();
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.clip();
-      var fd = TL.RNG(9);
-      ctx.fillStyle = 'rgba(140,64,40,0.5)';
-      for (var f2 = 0; f2 < 8; f2++) {
-        ctx.beginPath();
-        ctx.ellipse(mx + (fd() - 0.5) * mr * 1.5, my + (fd() - 0.5) * mr * 1.4, mr * (0.1 + fd() * 0.22), mr * (0.05 + fd() * 0.1), fd() * 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      /* polar cap */
-      ctx.fillStyle = '#f4ece4';
-      ctx.beginPath(); ctx.ellipse(mx, my - mr * 0.8, mr * 0.42, mr * 0.14, 0, 0, Math.PI * 2); ctx.fill();
-      /* dusk shadow band */
-      ctx.fillStyle = 'rgba(20,10,26,0.3)'; ctx.fillRect(mx - mr, my + mr * 0.4, mr * 2, mr);
-      ctx.restore();
-      /* screen glow bleeding into the room */
-      ctx.globalAlpha = 0.16; ctx.fillStyle = '#c86a3c'; ctx.fillRect(232, 52, 496, 8); ctx.globalAlpha = 1;
-      /* targeting reticle */
-      ctx.strokeStyle = '#7ef0c8'; ctx.globalAlpha = 0.7;
-      ctx.strokeRect(mx - 70, my - 70, 140, 140);
-      ctx.globalAlpha = 1;
-      TL.text(ctx, 'TARGET: MARS', 250, 66, 8, '#7ef0c8');
-      /* shelf of lost hardware — the machines this journey carries */
-      var HW = [['pathfinder', 'PATHFINDER'], ['sojourner', 'SOJOURNER'], ['spirit', 'SPIRIT'], ['viking1', 'VIKING'], ['phoenix', 'PHOENIX'], ['insight', 'INSIGHT'], ['ingenuity', 'INGENUITY'], ['curiosity', 'MSL'], ['relay', 'MARINER 4']];
-      for (var i2 = 0; i2 < HW.length; i2++) {
-        var hx = 74 + i2 * 92, hy = 384;
-        ctx.fillStyle = '#1a222c'; ctx.fillRect(hx - 34, hy, 68, 12);   /* pedestal */
-        ctx.fillStyle = '#2a3642'; ctx.fillRect(hx - 34, hy, 68, 2);
-        ctx.fillStyle = '#0c1218'; ctx.fillRect(hx - 30, hy + 12, 60, 3);
-        ctx.save();
-        ctx.translate(hx, hy);
-        ctx.scale(0.9, 0.9);
-        TL.CHAR_DRAW[HW[i2][0]](ctx, Cin.t, {});
-        ctx.restore();
-        TL.text(ctx, HW[i2][1], hx, hy + 18, 6, '#6a8a9a', 'center');
-      }
-      /* warm museum light over the shelf */
-      ctx.globalAlpha = 0.08; ctx.fillStyle = '#d8b25a'; ctx.fillRect(20, 290, TL.W - 40, 120); ctx.globalAlpha = 1;
-      /* blueprint section (later half) */
-      if (d > 0.45) {
-        var bp = Math.min(1, (d - 0.45) / 0.2);
-        ctx.globalAlpha = bp;
-        ctx.fillStyle = '#0a2030';
-        ctx.fillRect(120, 420, 720, 100);
-        ctx.strokeStyle = '#3a6a8a';
-        ctx.strokeRect(120, 420, 720, 100);
-        ctx.save();
-        ctx.strokeStyle = '#6ac8f0'; ctx.lineWidth = 1;
-        /* rocket diagram */
-        ctx.beginPath();
-        ctx.moveTo(500, 432); ctx.lineTo(500, 505); ctx.lineTo(516, 505); ctx.lineTo(516, 432);
-        ctx.moveTo(492, 440); ctx.lineTo(500, 432); ctx.lineTo(508, 440);
-        ctx.moveTo(496, 505); ctx.lineTo(500, 512); ctx.lineTo(504, 505);
-        ctx.stroke();
-        ctx.strokeRect(540, 450, 44, 30); /* rover bay */
-        ctx.strokeRect(548, 458, 20, 14);
-        ctx.strokeRect(610, 446, 26, 38); /* capsule */
-        TL.text(ctx, 'ENTRY SYSTEM', 470, 512, 6, '#4a8aa8');
-        TL.text(ctx, 'ROVER BAY', 540, 486, 6, '#4a8aa8');
-        TL.text(ctx, 'EXPLORER UNIT "SEEKER"', 650, 470, 6, '#4a8aa8');
-        ctx.restore();
-        ctx.globalAlpha = 1;
-      }
-    } },
+    ] },
     { dur: 13, lines: [
       { at: 2.2, text: 'All systems nominal.' },
       { at: 6.4, text: 'Destination: Mars.' }
-    ], draw: function (ctx, t, d) {
-      if (d < 0.55) {
-        /* launch pad */
-        var lg = ctx.createLinearGradient(0, 0, 0, TL.H);
-        lg.addColorStop(0, '#0a1226'); lg.addColorStop(0.7, '#1a2036'); lg.addColorStop(1, '#0c1018');
-        ctx.fillStyle = lg; ctx.fillRect(0, 0, TL.W, TL.H);
-        /* ground */
-        ctx.fillStyle = '#0e141c'; ctx.fillRect(0, TL.H - 90, TL.W, 90);
-        /* stars */
-        var rr2 = TL.RNG(21);
-        for (var i = 0; i < 60; i++) { ctx.globalAlpha = rr2() * 0.7; ctx.fillStyle = '#c8d8e8'; ctx.fillRect(rr2() * TL.W | 0, rr2() * 300 | 0, 2, 2); }
-        ctx.globalAlpha = 1;
-        /* tower */
-        ctx.fillStyle = '#26303e';
-        ctx.fillRect(360, 150, 14, TL.H - 240);
-        for (i = 0; i < 6; i++) ctx.fillRect(374, 170 + i * 50, 30, 4);
-        /* rocket */
-        var liftoff = Math.max(0, (d - 0.22) / 0.78);
-        var ry = TL.H - 150 - liftoff * liftoff * 700;
-        var rx = 470;
-        ctx.fillStyle = '#d8dce4';
-        ctx.fillRect(rx - 12, ry, 24, 90);
-        ctx.fillStyle = '#c8402a';
-        ctx.fillRect(rx - 12, ry, 24, 18);
-        ctx.beginPath(); ctx.moveTo(rx - 12, ry); ctx.lineTo(rx, ry - 26); ctx.lineTo(rx + 12, ry); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#8a8e98';
-        ctx.fillRect(rx - 18, ry + 60, 6, 22); ctx.fillRect(rx + 12, ry + 60, 6, 22);
-        /* flame + smoke */
-        if (d > 0.18) {
-          var fs = 30 + Math.sin(d * 30) * 8 + liftoff * 30;
-          ctx.fillStyle = '#ffd080';
-          ctx.beginPath(); ctx.moveTo(rx - 10, ry + 92); ctx.lineTo(rx, ry + 92 + fs); ctx.lineTo(rx + 10, ry + 92); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#ff8040';
-          ctx.beginPath(); ctx.moveTo(rx - 6, ry + 92); ctx.lineTo(rx, ry + 92 + fs * 0.6); ctx.lineTo(rx + 6, ry + 92); ctx.closePath(); ctx.fill();
-          ctx.globalAlpha = 0.5; ctx.fillStyle = '#c8c4bc';
-          for (i = 0; i < 8; i++) {
-            var sy2 = ry + 95 + i * 18 + Math.sin(d * 10 + i) * 6;
-            ctx.beginPath(); ctx.arc(rx + Math.sin(d * 6 + i * 2) * (14 + i * 8), sy2, 10 + i * 4, 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.globalAlpha = 1;
-        }
-      } else {
-        /* space cruise */
-        ctx.fillStyle = '#04060e'; ctx.fillRect(0, 0, TL.W, TL.H);
-        var rr3 = TL.RNG(31);
-        for (i = 0; i < 90; i++) {
-          var sx3 = ((rr3() * TL.W - (d - 0.55) * 60) % TL.W + TL.W) % TL.W;
-          ctx.globalAlpha = 0.3 + rr3() * 0.7;
-          ctx.fillStyle = '#c8d8e8';
-          ctx.fillRect(sx3 | 0, (rr3() * TL.H) | 0, rr3() > 0.9 ? 3 : 2, 1);
-        }
-        ctx.globalAlpha = 1;
-        /* spacecraft bus */
-        var sx4 = 260, sy4 = 260;
-        ctx.save();
-        ctx.translate(sx4, sy4); ctx.rotate(Math.sin(d * 2) * 0.05);
-        ctx.fillStyle = '#c8ccd4'; ctx.fillRect(-22, -14, 44, 28);
-        ctx.fillStyle = '#26365c';
-        ctx.fillRect(-58, -8, 30, 16); ctx.fillRect(28, -8, 30, 16);
-        ctx.fillStyle = '#3c5484';
-        ctx.fillRect(-58, -8, 30, 3); ctx.fillRect(28, -8, 30, 3);
-        ctx.fillStyle = '#d8b25a'; ctx.fillRect(-4, -22, 8, 8);
-        ctx.strokeStyle = '#8a8e98';
-        ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(0, -22); ctx.stroke();
-        ctx.restore();
-        /* Mars approaching */
-        var mg2 = (d - 0.55) / 0.45;
-        var mrx = TL.W - 140 - (1 - mg2) * 300, mry = 300, mrr = 40 + mg2 * 60;
-        var eg2 = ctx.createRadialGradient(mrx - mrr * 0.3, mry - mrr * 0.3, 5, mrx, mry, mrr);
-        eg2.addColorStop(0, '#e8a070'); eg2.addColorStop(0.7, '#c86a3c'); eg2.addColorStop(1, '#5a2418');
-        ctx.fillStyle = eg2;
-        ctx.beginPath(); ctx.arc(mrx, mry, mrr, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#8a4228';
-        ctx.beginPath(); ctx.arc(mrx + 14, mry + 10, mrr * 0.2, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(mrx - 16, mry - 14, mrr * 0.14, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#f0e0d0';
-        ctx.globalAlpha = 0.8;
-        ctx.beginPath(); ctx.ellipse(mrx, mry - mrr * 0.86, mrr * 0.5, mrr * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    } },
+    ] },
     { dur: 14, lines: [
       { at: 1.2, text: 'Touchdown confirmed.' },
       { at: 5.4, text: 'Well... you\'re on your own now, little explorer.' }
-    ], draw: function (ctx, t, d) {
-      if (d < 0.62) {
-        /* atmospheric descent */
-        var hg = ctx.createLinearGradient(0, 0, 0, TL.H);
-        hg.addColorStop(0, '#3a1c10'); hg.addColorStop(0.5, '#b85a2c'); hg.addColorStop(1, '#e8935a');
-        ctx.fillStyle = hg; ctx.fillRect(0, 0, TL.W, TL.H);
-        /* heat streaks */
-        var spd = 1 + d * 3;
-        for (var i = 0; i < 30; i++) {
-          var sy5 = ((i * 37 + d * 900) % (TL.H + 60)) - 30;
-          ctx.globalAlpha = 0.2 + (i % 5) * 0.1;
-          ctx.fillStyle = '#ffd8b0';
-          ctx.fillRect(60 + (i * 83) % (TL.W - 120), sy5, 2, 30 + spd * 20);
-        }
-        ctx.globalAlpha = 1;
-        /* === THE LANDING OF OUR ROVER ===
-           aeroshell -> parachute + heatshield drop -> sky crane
-           lowering the actual explorer robot */
-        var cy5 = 120 + d * 250;
-        var rc = TL.W / 2;
-        if (d < 0.26) {
-          /* aeroshell: blunt cone glowing with entry heat */
-          ctx.save();
-          ctx.translate(rc, cy5);
-          ctx.shadowColor = '#ffb060'; ctx.shadowBlur = 30 + d * 40;
-          ctx.fillStyle = '#4a3428';
-          ctx.beginPath(); ctx.arc(0, 6, 26, Math.PI, 0); ctx.closePath(); ctx.fill();  /* backshell dome */
-          ctx.fillStyle = '#6a5038';
-          ctx.fillRect(-26, 6, 52, 8);
-          ctx.fillStyle = '#8a6a50';
-          ctx.beginPath(); ctx.moveTo(-26, 14); ctx.lineTo(26, 14); ctx.lineTo(16, 30); ctx.lineTo(-16, 30); ctx.closePath(); ctx.fill();
-          /* glowing rim */
-          ctx.strokeStyle = 'rgba(255,180,100,0.9)'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(-25, 29); ctx.quadraticCurveTo(0, 36, 25, 29); ctx.stroke();
-          ctx.restore();
-        } else {
-          /* heatshield falls away, tumbling */
-          var hs = Math.min(1, (d - 0.26) / 0.22);
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, 1 - hs * 0.9);
-          ctx.translate(rc + Math.sin(hs * 5) * 30, cy5 + 40 + hs * hs * 260);
-          ctx.rotate(hs * 2.2);
-          ctx.fillStyle = '#8a6a50';
-          ctx.beginPath(); ctx.moveTo(-22, -8); ctx.lineTo(22, -8); ctx.lineTo(13, 8); ctx.lineTo(-13, 8); ctx.closePath(); ctx.fill();
-          ctx.strokeStyle = '#ffb060'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.moveTo(-21, -7); ctx.lineTo(21, -7); ctx.stroke();
-          ctx.restore();
-          ctx.globalAlpha = 1;
-          /* backshell + canopy descending slower */
-          var cy6 = cy5 * 0.82 + 30;
-          /* parachute */
-          var pa = Math.min(1, (d - 0.28) / 0.12);
-          var sway = Math.sin(d * 3) * 10;
-          ctx.globalAlpha = pa;
-          ctx.strokeStyle = '#d8dce4'; ctx.lineWidth = 1;
-          for (i = 0; i < 4; i++) {
-            ctx.beginPath(); ctx.moveTo(rc - 14 + i * 9, cy6 - 10);
-            ctx.lineTo(rc + sway + (-30 + i * 20) * 1.6, cy6 - 118); ctx.stroke();
-          }
-          ctx.fillStyle = '#e8e4d8';
-          ctx.beginPath(); ctx.arc(rc + sway, cy6 - 118, 54, Math.PI, 0); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#c8402a';
-          ctx.beginPath(); ctx.arc(rc + sway, cy6 - 118, 54, Math.PI, 0); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#e8e4d8';
-          ctx.beginPath(); ctx.arc(rc + sway, cy6 - 118, 54, Math.PI * 0.75, Math.PI * 1.25); ctx.closePath(); ctx.fill();
-          ctx.globalAlpha = 1;
-          /* backshell with rover legs peeking below */
-          ctx.fillStyle = '#4a3428';
-          ctx.beginPath(); ctx.arc(rc, cy6, 20, Math.PI, 0); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#6a5038'; ctx.fillRect(rc - 20, cy6, 40, 6);
-          ctx.strokeStyle = '#c8ccd4'; ctx.lineWidth = 2;
-          for (var lg3 = 0; lg3 < 3; lg3++) {
-            ctx.beginPath(); ctx.moveTo(rc - 14 + lg3 * 14, cy6 + 6);
-            ctx.lineTo(rc - 14 + lg3 * 14, cy6 + 12); ctx.stroke();
-          }
-          /* sky crane: rover on bridles, thrusters easing it down */
-          if (d > 0.44) {
-            var sk = Math.min(1, (d - 0.44) / 0.16);
-            var bridle = 16 + sk * 46;
-            var scy = cy6 - 26 - bridle;
-            /* bridles */
-            ctx.strokeStyle = '#d8dce4'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(rc - 16, scy + 8); ctx.lineTo(rc - 12, scy + 8 + bridle); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(rc + 16, scy + 8); ctx.lineTo(rc + 12, scy + 8 + bridle); ctx.stroke();
-            /* crane body */
-            ctx.fillStyle = '#8a8e98'; ctx.fillRect(rc - 20, scy, 40, 14);
-            ctx.fillStyle = '#b0b4bc'; ctx.fillRect(rc - 20, scy, 40, 4);
-            ctx.fillStyle = '#c05a38'; ctx.fillRect(rc - 6, scy - 8, 12, 8);
-            /* thruster puffs */
-            for (i = 0; i < 2; i++) {
-              var tx6 = rc - 14 + i * 28;
-              ctx.fillStyle = 'rgba(255,208,128,0.7)';
-              ctx.beginPath(); ctx.moveTo(tx6 - 4, scy + 14);
-              ctx.lineTo(tx6 + Math.sin(Cin.t * 0.02 + i) * 3, scy + 24 + Math.random() * 4);
-              ctx.lineTo(tx6 + 4, scy + 14); ctx.closePath(); ctx.fill();
-            }
-            /* the rover itself, hanging under the bridles */
-            TL.drawRobot(ctx, rc, cy6 + 14 + bridle, 1, 'idle', 0, {});
-          } else {
-            /* folded rover silhouette inside the shell */
-            ctx.fillStyle = '#b89068';
-            ctx.fillRect(rc - 12, cy6 + 10, 24, 6);
-          }
-        }
-        /* ground approaching */
-        ctx.fillStyle = '#a05a30';
-        ctx.globalAlpha = Math.max(0, (d - 0.5) * 2);
-        ctx.fillRect(0, TL.H - 40, TL.W, 40);
-        ctx.globalAlpha = 1;
-      } else {
-        /* landed: sky crane flies off, our rover stands alone */
-        var d2 = (d - 0.62) / 0.38;
-        var lg2 = ctx.createLinearGradient(0, 0, 0, TL.H);
-        lg2.addColorStop(0, '#c86a3c'); lg2.addColorStop(1, '#8a3f28');
-        ctx.fillStyle = lg2; ctx.fillRect(0, 0, TL.W, TL.H);
-        /* ground */
-        ctx.fillStyle = '#b56536'; ctx.fillRect(0, 400, TL.W, TL.H - 400);
-        ctx.fillStyle = 'rgba(255,220,180,0.4)'; ctx.fillRect(0, 400, TL.W, 3);
-        /* sky crane retreating + crash puff in the distance */
-        if (d2 < 0.85) {
-          var fly = d2 / 0.85;
-          var scx = TL.W / 2 + fly * 260, scy2 = 120 - fly * 60;
-          ctx.globalAlpha = Math.max(0, 1 - fly * 1.05);
-          ctx.fillStyle = '#8a8e98'; ctx.fillRect(scx - 14, scy2, 28, 10);
-          ctx.fillStyle = '#c05a38'; ctx.fillRect(scx - 4, scy2 - 6, 8, 6);
-          ctx.fillStyle = 'rgba(255,208,128,0.6)';
-          for (var ti = 0; ti < 2; ti++) {
-            ctx.beginPath(); ctx.arc(scx - 8 + ti * 16, scy2 + 14, 4 + fly * 8, 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.globalAlpha = 1;
-        }
-        /* crash puff far away */
-        ctx.globalAlpha = Math.max(0, 0.4 - d2 * 0.4);
-        ctx.fillStyle = '#e8a070';
-        ctx.beginPath(); ctx.ellipse(830, 428, 40 + d2 * 60, 12 + d2 * 10, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-        /* our rover, on its own world for the first time */
-        TL.drawRobot(ctx, 420, 448, 1, 'idle', Cin.t * 0.001, {});
-        /* dust settling */
-        ctx.globalAlpha = Math.max(0, 0.5 - d2 * 1.5);
-        ctx.fillStyle = '#e8a070';
-        ctx.fillRect(0, 380, TL.W, 60);
-        ctx.globalAlpha = 1;
-        /* robot perspective: our own shadow + arm */
-        ctx.fillStyle = 'rgba(20,26,30,0.35)';
-        ctx.beginPath(); ctx.ellipse(TL.W / 2, 452, 40, 9, 0, 0, Math.PI * 2); ctx.fill();
-        /* boot text */
-        if (d2 > 0.25) {
-          var bp = Math.min(1, (d2 - 0.25) / 0.2);
-          TL.BIG_TEXT = true;
-          TL.panel(ctx, TL.W / 2 - 180, 150, 360, 120, { corner: '#7ef0c8' });
-          var bootLines = ['SYSTEM INITIALIZED.', 'NAV ..... ONLINE', 'POWER ... 98%', 'MISSION .. BEGIN'];
-          var n = Math.floor(bp * 8);
-          for (var b2 = 0; b2 < Math.min(bootLines.length, Math.ceil(n / 2)); b2++) {
-            TL.text(ctx, bootLines[b2], TL.W / 2 - 150, 170 + b2 * 24, 10, '#7ef0c8');
-          }
-          TL.BIG_TEXT = false;
-        }
-      }
-    } }
+    ] }
   ];
+  var CIN_FADE = 0.9;   /* crossfade duration between slides (s) */
+
+  /* cover-draw with a slow, subtle Ken Burns zoom (p: 0..1 -> 100%..105%) */
+  function drawCoverZoom(ctx, img, p, alpha) {
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+    var s = Math.max(TL.W / iw, TL.H / ih) * (1 + 0.05 * TL.clamp(p, 0, 1));
+    var dw = iw * s, dh = ih * s;
+    ctx.save();
+    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, Math.round((TL.W - dw) / 2), Math.round((TL.H - dh) / 2), dw, dh);
+    ctx.restore();
+  }
 
   Cin.update = function (dt) {
     Cin.t += dt;
@@ -588,23 +272,26 @@
   Cin.draw = function (ctx) {
     var sc = Cin.SCENES[Cin.scene];
     var d = Cin.sceneT / sc.dur;
-    /* user-imported scene backdrop replaces the drawn scene when present */
+    /* --- backdrops: preloaded photos, crossfaded, Ken Burns zoom --- */
     var img = TL.Images ? TL.Images.scene(Cin.scene) : null;
-    var hasImg = false;
-    ctx.save();
+    var prev = (Cin.scene > 0 && Cin.sceneT < CIN_FADE && TL.Images) ? TL.Images.scene(Cin.scene - 1) : null;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, TL.W, TL.H);
-    if (img) hasImg = TL.Images.drawCover(ctx, img, 0, 0, TL.W, TL.H);
-    if (!hasImg) sc.draw(ctx, Cin.sceneT, d);
-    else { /* soft vignette keeps the photo cinematic */
+    if (prev && prev !== 'fail') {
+      /* outgoing slide holds its final zoom level and dissolves away */
+      drawCoverZoom(ctx, prev, 1, 1 - Cin.sceneT / CIN_FADE);
+    }
+    var hasImg = !!(img && img !== 'fail');
+    if (hasImg) {
+      drawCoverZoom(ctx, img, d, prev ? Math.min(1, Cin.sceneT / CIN_FADE) : 1);
+      /* soft cinematic vignette */
       var vg = ctx.createRadialGradient(TL.W / 2, TL.H / 2, TL.H * 0.34, TL.W / 2, TL.H / 2, TL.H * 0.92);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(4,8,14,0.5)');
       ctx.fillStyle = vg; ctx.fillRect(0, 0, TL.W, TL.H);
     }
-    ctx.restore();
     /* letterbox */
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, TL.W, 34); ctx.fillRect(0, TL.H - 34, TL.W, 34);
-    /* dialogue lines */
+    /* dialogue lines: bottom subtitle bar over the imagery */
     var shown = null, shownIdx = -1;
     for (var i = 0; i < sc.lines.length; i++) {
       if (Cin.sceneT >= sc.lines[i].at) { shown = sc.lines[i]; shownIdx = i; }
@@ -613,165 +300,86 @@
       var el = Cin.sceneT - shown.at;
       var chars = Math.floor(el * 34);
       var text = shown.text.slice(0, chars);
-      /* placement: imported-image scenes use a bottom subtitle bar;
-         mission control sits left; the launch scene alternates
-         left -> right so the text frames the rocket;
-         other scenes use a centred lower panel */
-      var side = 'center';
-      if (hasImg) side = 'bar';
-      else if (Cin.scene === 1) side = 'left';
-      else if (Cin.scene === 2) side = (shownIdx % 2 === 0) ? 'left' : 'right';
-      var bx, bw2, py;
-      if (side === 'bar') { bx = 60; bw2 = TL.W - 120; py = TL.H - 118; }
-      else if (side === 'left') { bx = 18; bw2 = 430; py = 246; }
-      else if (side === 'right') { bx = TL.W - 18 - 430; bw2 = 430; py = 246; }
-      else { bx = TL.W / 2 - 380; bw2 = 760; py = TL.H - 140; }
+      var bx = 60, bw2 = TL.W - 120;
       TL.BIG_TEXT = true;
       ctx.font = TL.font(11);
       var lines = TL.wrap(ctx, text, bw2 - 40, 11);
-      var bh2 = 46 + lines.length * 18;
-      TL.panel(ctx, bx, py, bw2, bh2, { bg: 'rgba(6,14,20,0.78)', corner: '#d8b25a' });
-      var alignC = side === 'center' || side === 'bar';
-      TL.text(ctx, 'MISSION CONTROL', alignC ? TL.W / 2 : (side === 'left' ? bx + 16 : bx + bw2 - 16), py + 10, 8, '#d8b25a', alignC ? 'center' : (side === 'left' ? 'left' : 'right'));
-      var tx0 = alignC ? TL.W / 2 : (side === 'left' ? bx + 20 : bx + bw2 - 20);
+      var bh2 = 48 + lines.length * 20;
+      var py = TL.H - 34 - 14 - bh2;   /* bottom-anchored above the letterbox */
+      /* single clean semi-transparent container */
+      ctx.fillStyle = 'rgba(6,14,20,0.82)';
+      ctx.fillRect(bx, py, bw2, bh2);
+      ctx.strokeStyle = 'rgba(216,178,90,0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx + 0.5, py + 0.5, bw2 - 1, bh2 - 1);
+      TL.text(ctx, 'MISSION CONTROL', TL.W / 2, py + 10, 8, '#d8b25a', 'center');
       for (var L = 0; L < lines.length; L++) {
-        TL.text(ctx, lines[L], tx0, py + 32 + L * 18, 11, '#e8e0d0', alignC ? 'center' : (side === 'left' ? 'left' : 'right'));
+        TL.text(ctx, lines[L], TL.W / 2, py + 34 + L * 20, 11, '#e8e0d0', 'center');
       }
       /* typing tick */
       if (chars < shown.text.length && Math.floor(el * 10) % 2 === 0) {
         ctx.font = TL.font(11);
         var wtxt = lines[lines.length - 1] || '';
         var tw = ctx.measureText(wtxt).width;
-        var cxc = alignC ? TL.W / 2 + tw / 2 : (side === 'left' ? tx0 + tw : tx0 - tw);
-        TL.text(ctx, '▌', cxc + 4, py + 32 + (lines.length - 1) * 18, 11, '#7ef0c8');
+        TL.text(ctx, '▌', TL.W / 2 + tw / 2 + 4, py + 34 + (lines.length - 1) * 20, 11, '#7ef0c8');
       }
       TL.BIG_TEXT = false;
     }
     TL.text(ctx, 'SCENE ' + (Cin.scene + 1) + '/4 · ESC TO SKIP', TL.W - 20, TL.H - 24, 7, '#4a5a66', 'right');
-    /* static + CRT */
-    TL.staticOverlay(ctx, 0.05);
     TL.crt(ctx, Cin.t);
   };
 
-  /* ================= HUD ================= */
+  /* ================= HUD =================
+     Calm, low-stimulus: ONE compact status line (top-left),
+     ONE objective strip (bottom). No radar, no blinking, no
+     duplicated location plates — locations announce themselves
+     once, centered, via the story notification zone. */
   TL.HUD = {
-    card: null,   /* location introduction: { start, def } */
-    collect: [],  /* artifact pickup cards: { title, name, t } */
+    card: null,
+    collect: [],
+    /* status-zone routing: pickups and counters are top-right mini-cards */
     showCollect: function (title, name) {
-      TL.HUD.collect.push({ title: title, name: name, t: 0 });
-      if (TL.HUD.collect.length > 3) TL.HUD.collect.shift();
-    },
-    drawCollect: function (ctx) {
-      for (var i = 0; i < TL.HUD.collect.length; i++) {
-        var c = TL.HUD.collect[i];
-        c.t += 0.016;
-        if (c.t > 3.4) { TL.HUD.collect.splice(i, 1); i--; continue; }
-        var slide = c.t < 0.4 ? 1 - Math.pow(1 - c.t / 0.4, 3) : c.t > 3.0 ? Math.max(0, 1 - (c.t - 3.0) / 0.4) : 1;
-        var nameLines = TL.wrap(ctx, c.name, 176, 9);
-        var h = 52 + nameLines.length * 13;
-        var x = TL.W - 266 + (1 - slide) * 270;
-        var y = 156 + i * (h + 8);
-        ctx.save();
-        ctx.globalAlpha = slide;
-        TL.panel(ctx, x, y, 244, h, { bg: 'rgba(5,18,24,0.94)', corner: '#d8b25a' });
-        /* artifact diamond */
-        ctx.fillStyle = '#d8b25a';
-        ctx.beginPath();
-        ctx.moveTo(x + 26, y + 20);
-        ctx.lineTo(x + 36, y + 30);
-        ctx.lineTo(x + 26, y + 40);
-        ctx.lineTo(x + 16, y + 30);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,240,210,0.55)';
-        ctx.fillRect(x + 24, y + 26, 2, 2);
-        TL.text(ctx, c.title, x + 48, y + 9, 6, '#8fc0b0');
-        for (var L = 0; L < nameLines.length; L++) {
-          TL.text(ctx, nameLines[L], x + 48, y + 20 + L * 13, 9, '#d8b25a');
-        }
-        TL.text(ctx, 'CHECK IT OUT IN THE MENU', x + 48, y + h - 12, 6, '#6a9a8a');
-        ctx.restore();
-      }
+      TL.Notify.status(name, '#d8b25a');
     },
     showLocation: function (def) {
-      TL.HUD.card = { start: performance.now(), def: def };
+      TL.Notify.loc(def);
     },
-    drawCard: function (ctx) {
-      var c = TL.HUD.card;
-      if (!c) return;
-      var t = (performance.now() - c.start) / 1000;
-      if (t > 3.2) { TL.HUD.card = null; return; }
-      var al = Math.min(1, t / 0.35) * (t > 2.5 ? Math.max(0, 1 - (t - 2.5) / 0.7) : 1);
-      var y = 118 - Math.min(1, t / 3.2) * 8;
-      ctx.save();
-      ctx.globalAlpha = al;
-      TL.panel(ctx, TL.W / 2 - 220, y, 440, 84, { bg: 'rgba(4,14,18,0.82)', corner: '#d8b25a' });
-      /* expedition year */
-      TL.text(ctx, c.def.year, TL.W / 2, y + 10, 16, '#d8b25a', 'center');
-      TL.rect(ctx, TL.W / 2 - 60, y + 32, 120, 1, 'rgba(216,178,90,0.4)');
-      TL.text(ctx, c.def.region, TL.W / 2, y + 40, 9, '#9fe8d8', 'center');
-      TL.text(ctx, c.def.sub || '', TL.W / 2, y + 60, 7, '#7ab8a8', 'center', 0.85);
-      ctx.restore();
-    },
+    drawCollect: function () { /* handled by TL.Notify.drawStatus */ },
+    drawCard: function () { /* handled by TL.Notify.drawStory */ },
     draw: function (ctx, p) {
       var a = TL.World.area, def = a.def;
       var discovered = TL.discCount();
-      /* top-left: expedition year plate */
-      TL.panel(ctx, 10, 10, 178, 46, { bg: 'rgba(4,16,20,0.72)' });
-      TL.text(ctx, def.year, 22, 15, 14, '#d8b25a');
-      TL.text(ctx, def.region, 22, 40, 7, '#8fc0b0', 'left', 0.9);
-      /* top-right: slim battery */
-      TL.panel(ctx, TL.W - 152, 10, 142, 26, { bg: 'rgba(4,16,20,0.72)' });
-      TL.text(ctx, 'PWR', TL.W - 144, 18, 6, '#6a9a8a');
-      TL.bar(ctx, TL.W - 112, 17, 70, 11, p.battery / 100, p.battery < 20 ? '#f0a050' : '#7ef0c8');
-      TL.text(ctx, Math.round(p.battery) + '', TL.W - 36, 18, 6, '#6a9a8a');
-      /* hardware counter chip */
+      /* single static status line — battery + hardware count in one bar */
+      ctx.fillStyle = 'rgba(4,16,20,0.62)';
+      ctx.fillRect(10, 10, 292, 26);
+      ctx.strokeStyle = 'rgba(110,220,200,0.22)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(10.5, 10.5, 291, 25);
+      TL.text(ctx, 'PWR', 20, 18, 6, '#6a9a8a');
+      TL.bar(ctx, 46, 17, 56, 11, p.battery / 100, p.battery < 20 ? '#f0a050' : '#7ef0c8');
+      TL.text(ctx, Math.round(p.battery) + '%', 108, 18, 6, '#6a9a8a');
       /* hardware counter chip (drawn diamond — glyph may be missing from the font) */
       ctx.fillStyle = '#d8b25a';
       ctx.beginPath();
-      ctx.moveTo(TL.W - 140, 48);
-      ctx.lineTo(TL.W - 135, 43);
-      ctx.lineTo(TL.W - 130, 48);
-      ctx.lineTo(TL.W - 135, 53);
+      ctx.moveTo(146, 28);
+      ctx.lineTo(151, 23);
+      ctx.lineTo(156, 28);
+      ctx.lineTo(151, 33);
       ctx.closePath();
       ctx.fill();
-      TL.text(ctx, String(discovered).padStart(2, '0') + '/' + TL.TOTAL_HW + ' HARDWARE', TL.W - 124, 45, 7, '#8fc0b0', 'left', 0.85);
-      /* radar: small, translucent, out of the way */
-      var rx = TL.W - 52, ry = 118, rr4 = 28;
-      TL.panel(ctx, rx - rr4 - 6, ry - rr4 - 6, rr4 * 2 + 12, rr4 * 2 + 12, { bg: 'rgba(6,20,26,0.45)', corner: 'rgba(110,220,200,0.25)' });
-      ctx.save();
-      ctx.beginPath(); ctx.arc(rx, ry, rr4, 0, Math.PI * 2); ctx.clip();
-      ctx.fillStyle = 'rgba(10,30,36,0.55)'; ctx.fillRect(rx - rr4, ry - rr4, rr4 * 2, rr4 * 2);
-      var sweep = (a.t * 0.0012) % (Math.PI * 2);
-      ctx.strokeStyle = 'rgba(126,240,200,0.35)';
-      ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx + Math.cos(sweep) * rr4, ry + Math.sin(sweep) * rr4); ctx.stroke();
-      var blips = TL.World.radarBlips(p.x);
-      for (var i = 0; i < blips.length; i++) {
-        var b3 = blips[i];
-        var dxx = b3.dx / 16;
-        if (Math.abs(dxx) > rr4 - 4) dxx = Math.sign(dxx) * (rr4 - 4);
-        var colors = { 'char': '#f0a050', 'char-done': '#d8b25a', 'station': '#7ef0c8', 'exit': '#59c8f0', 'item': '#3a8a7a' };
-        ctx.fillStyle = colors[b3.kind] || '#7ef0c8';
-        var bs = b3.kind === 'char' ? 3 : 2;
-        ctx.fillRect(rx + dxx - bs / 2, ry - bs / 2 + Math.sin(a.t * 0.004 + i) * 2, bs, bs);
-      }
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(rx - 2, ry - 2, 4, 4);
-      ctx.restore();
-      ctx.strokeStyle = 'rgba(110,220,200,0.25)';
-      ctx.beginPath(); ctx.arc(rx, ry, rr4, 0, Math.PI * 2); ctx.stroke();
-      /* bottom-left: slim objective strip */
+      TL.text(ctx, String(discovered).padStart(2, '0') + '/' + TL.TOTAL_HW, 162, 18, 7, '#8fc0b0');
+      TL.text(ctx, 'ESC · SYSTEMS', 292, 18, 6, 'rgba(140,180,170,0.4)', 'right');
+      /* slim objective strip */
       var obj = TL.G.objective();
-      TL.panel(ctx, 10, TL.H - 36, 470, 26, { bg: 'rgba(4,16,20,0.6)', corner: 'rgba(110,220,200,0.25)' });
-      TL.text(ctx, 'OBJ', 22, TL.H - 29, 7, '#59c8f0');
-      TL.text(ctx, obj, 56, TL.H - 29, 8, '#c8e8dc');
-      /* faint systems hint, bottom-right */
-      TL.text(ctx, 'ESC · SYSTEMS', TL.W - 16, TL.H - 28, 7, 'rgba(140,180,170,0.35)', 'right');
-      /* location introduction card */
-      TL.HUD.drawCard(ctx);
-      /* low battery warning */
-      if (p.battery < 18 && Math.sin(a.t * 0.006) > 0) {
-        TL.text(ctx, '! LOW POWER — RECHARGE AT SOLAR STATION', TL.W / 2, 60, 8, '#f0a050', 'center');
+      ctx.fillStyle = 'rgba(4,16,20,0.5)';
+      ctx.fillRect(10, TL.H - 36, 470, 26);
+      ctx.strokeStyle = 'rgba(110,220,200,0.18)';
+      ctx.strokeRect(10.5, TL.H - 35.5, 469, 25);
+      TL.text(ctx, 'OBJ', 20, TL.H - 29, 7, '#59c8f0');
+      TL.text(ctx, obj, 52, TL.H - 29, 8, '#c8e8dc');
+      /* low battery: calm static advisory, no flashing */
+      if (p.battery < 18) {
+        TL.text(ctx, 'LOW POWER — RECHARGE AT A SOLAR STATION', TL.W / 2, 52, 7, 'rgba(240,160,80,0.75)', 'center');
       }
     }
   };
@@ -1201,66 +809,155 @@
     }
   };
 
-  /* ================= EPILOGUE ================= */
+  /* ================= EPILOGUE =================
+     Cinematic, reflective ending: the legacy of every mission,
+     the lesson of perseverance, the passing of the torch —
+     closing on a Martian twilight and the title credits. */
   TL.Epilogue = {
-    idx: 0, t: 0,
-    start: function () { TL.Epilogue.idx = 0; TL.Epilogue.t = 0; },
+    idx: 0, t: 0, phase: 0,     /* phase 0 = narrative beats, 1 = twilight, 2 = credits */
+    start: function () { TL.Epilogue.idx = 0; TL.Epilogue.t = 0; TL.Epilogue.phase = 0; },
     update: function (dt) {
       TL.Epilogue.t += dt;
-      var advance = TL.actHit() || TL.hit('space') || TL.mouse.clicked;
-      if (advance && TL.Epilogue.t > 1.2) {
-        TL.Epilogue.idx++;
-        TL.Epilogue.t = 0;
-        TL.audio.blip(520, 0.05, 0.1);
-        if (TL.Epilogue.idx >= TL.D.EPILOGUE.length + 1) {
-          TL.G.finishFinale();
+      var advance = (TL.actHit() || TL.hit('space') || TL.mouse.clicked) && TL.Epilogue.t > 1.4;
+      if (TL.Epilogue.phase === 0) {
+        if (advance) {
+          TL.Epilogue.idx++;
+          TL.Epilogue.t = 0;
+          TL.audio.blip(520, 0.05, 0.1);
+          if (TL.Epilogue.idx >= TL.D.EPILOGUE.length) { TL.Epilogue.phase = 1; TL.Epilogue.t = 0; TL.audio.chime(2.2); }
         }
+      } else if (TL.Epilogue.phase === 1) {
+        if (advance && TL.Epilogue.t > 4) { TL.Epilogue.phase = 2; TL.Epilogue.t = 0; }
+      } else {
+        if (advance) TL.G.finishFinale();
       }
       if (TL.hit('escape')) TL.G.finishFinale();
     },
+    /* --- shared scenic backdrops --- */
+    stars: function (ctx, seed, n) {
+      var rr = TL.RNG(seed);
+      for (var i = 0; i < n; i++) {
+        ctx.globalAlpha = 0.15 + 0.6 * Math.abs(Math.sin(TL.Epilogue.t * 0.5 + i));
+        ctx.fillStyle = '#c8d8e8';
+        ctx.fillRect(rr() * TL.W | 0, rr() * TL.H * 0.55 | 0, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+    },
+    drawTextStage: function (ctx, alpha) {
+      /* BIG_TEXT keeps the ending at full size (no small-text shrink) */
+      TL.BIG_TEXT = true;
+      var lines = TL.wrap(ctx, TL.D.EPILOGUE[TL.Epilogue.idx], 700, 12);
+      TL.BIG_TEXT = false;
+      var y0 = TL.H / 2 - (lines.length * 24) / 2 + 10;
+      for (var L = 0; L < lines.length; L++) {
+        TL.text(ctx, lines[L], TL.W / 2, y0 + L * 24, 12, TL.Epilogue.idx === 0 ? '#d8b25a' : '#cfeadd', 'center', alpha);
+      }
+    },
+    /* the closing vista: a solitary rover beneath a pale-blue Martian sunset */
+    drawTwilight: function (ctx) {
+      var a = Math.min(1, TL.Epilogue.t / 1.6);   /* slow, smooth fade-in */
+      ctx.save();
+      ctx.globalAlpha = a;
+      /* dusky sky: ashen above, pale blue glow low — Mars sunsets are blue */
+      var g = ctx.createLinearGradient(0, 0, 0, TL.H);
+      g.addColorStop(0, '#241b1e'); g.addColorStop(0.55, '#3a2c2e');
+      g.addColorStop(0.78, '#5c6a80'); g.addColorStop(0.9, '#8fa8c0'); g.addColorStop(1, '#5a6a80');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, TL.W, TL.H);
+      TL.Epilogue.stars(ctx, 23, 60);
+      /* the pale blue sun, low on the horizon */
+      var sx = TL.W * 0.5, sy = TL.H - 96;
+      var glow = ctx.createRadialGradient(sx, sy, 2, sx, sy, 130);
+      glow.addColorStop(0, 'rgba(220,235,255,0.85)'); glow.addColorStop(0.25, 'rgba(150,185,220,0.35)'); glow.addColorStop(1, 'rgba(150,185,220,0)');
+      ctx.fillStyle = glow; ctx.fillRect(sx - 140, sy - 140, 280, 280);
+      ctx.fillStyle = '#e6f0fb';
+      ctx.beginPath(); ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fill();
+      /* hills, then the plain */
+      ctx.fillStyle = '#2c1d18';
+      ctx.beginPath(); ctx.moveTo(0, TL.H - 78); ctx.lineTo(180, TL.H - 118); ctx.lineTo(420, TL.H - 84);
+      ctx.lineTo(700, TL.H - 122); ctx.lineTo(TL.W, TL.H - 88); ctx.lineTo(TL.W, TL.H); ctx.lineTo(0, TL.H); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#241713'; ctx.fillRect(0, TL.H - 66, TL.W, 66);
+      /* the rover, small and solitary, facing the light */
+      ctx.save();
+      ctx.translate(TL.W * 0.36, TL.H - 64);
+      ctx.scale(0.85, 0.85);
+      TL.drawRobot(ctx, 0, 0, 1, 'idle', TL.Epilogue.t * 0.12, {});
+      ctx.restore();
+      /* long evening shadow toward the viewer */
+      ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#120c0a';
+      ctx.beginPath(); ctx.ellipse(TL.W * 0.36 + 26, TL.H - 58, 60, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      /* drifting dust, lit faintly blue */
+      var rr = TL.RNG(9);
+      for (var i = 0; i < 26; i++) {
+        var dx = (rr() * TL.W + TL.Epilogue.t * 8 * (0.4 + rr())) % TL.W;
+        ctx.globalAlpha = a * (0.1 + rr() * 0.2);
+        ctx.fillStyle = '#aebfd4';
+        ctx.fillRect(dx | 0, (TL.H - 90 + rr() * 60) | 0, 2, 1);
+      }
+      ctx.restore();
+      /* closing line over the scene */
+      var alpha = Math.min(1, Math.max(0, (TL.Epilogue.t - 1.6) / 1.2));
+      if (alpha > 0) {
+        TL.text(ctx, 'The torch is lit. Keep going.', TL.W / 2, TL.H - 190, 11, '#cfe2f0', 'center', alpha);
+      }
+    },
+    drawCredits: function (ctx) {
+      TL.Epilogue.drawTwilight(ctx);
+      var a = Math.min(1, TL.Epilogue.t / 1.4);
+      ctx.save();
+      ctx.globalAlpha = a * 0.86;
+      ctx.fillStyle = 'rgba(3,6,10,0.82)';
+      ctx.fillRect(0, 0, TL.W, TL.H);
+      ctx.restore();
+      var pulse = 0.85 + 0.15 * Math.sin(TL.Epilogue.t * 1.2);
+      TL.text(ctx, 'THE THINGS WE LEFT BEHIND', TL.W / 2, 168, 22, '#7ef0c8', 'center', a * pulse);
+      TL.rect(ctx, TL.W / 2 - 150, 214, 300, 1, 'rgba(126,240,200,0.35)');
+      var credits = [
+        'AN INTERACTIVE EXPERIENCE BY MAI TEAM',
+        '',
+        'STARRING THE MACHINES OF MARS, 1965 – PRESENT',
+        'MARINER 4 · VIKING 1 & 2 · PATHFINDER · SOJOURNER',
+        'SPIRIT · OPPORTUNITY · PHOENIX · CURIOSITY',
+        'INSIGHT · INGENUITY · PERSEVERANCE',
+        '',
+        'FOR THE MISSION TEAMS WHO NEVER STOPPED LISTENING',
+        '',
+        'THE ARCHIVE REMAINS OPEN. THANK YOU FOR LISTENING.'
+      ];
+      for (var i = 0; i < credits.length; i++) {
+        TL.text(ctx, credits[i], TL.W / 2, 250 + i * 22, 9, i === 0 ? '#d8b25a' : '#9fd8c8', 'center', a);
+      }
+      TL.text(ctx, 'E TO RETURN TO THE SURFACE', TL.W / 2, TL.H - 56, 7, '#3a5a52', 'center', a);
+    },
     draw: function (ctx) {
       ctx.fillStyle = '#02060a'; ctx.fillRect(0, 0, TL.W, TL.H);
-      var rr7 = TL.RNG(41);
-      for (var i = 0; i < 110; i++) {
-        ctx.globalAlpha = 0.2 + 0.8 * Math.abs(Math.sin(TL.Epilogue.t + i));
-        ctx.fillStyle = i % 7 === 0 ? '#e8d0a0' : '#c8d8e8';
-        ctx.fillRect(rr7() * TL.W | 0, rr7() * TL.H | 0, 2, 2);
-      }
-      ctx.globalAlpha = 1;
-      /* signal wave from Mars to Earth */
-      var t = (TL.Epilogue.t * 0.3) % 1;
-      ctx.globalAlpha = (1 - t) * 0.5;
-      ctx.strokeStyle = '#7ef0c8'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(TL.W - 180, TL.H - 160, 20 + t * 300, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
-      /* Mars */
-      var mg3 = ctx.createRadialGradient(TL.W - 190, TL.H - 170, 5, TL.W - 180, TL.H - 160, 40);
-      mg3.addColorStop(0, '#e8a070'); mg3.addColorStop(1, '#8a3f28');
-      ctx.fillStyle = mg3;
-      ctx.beginPath(); ctx.arc(TL.W - 180, TL.H - 160, 36, 0, Math.PI * 2); ctx.fill();
-      /* Earth far side */
-      var eg3 = ctx.createRadialGradient(170, 140, 5, 180, 150, 30);
-      eg3.addColorStop(0, '#7ec8f8'); eg3.addColorStop(1, '#0a2a5a');
-      ctx.fillStyle = eg3;
-      ctx.beginPath(); ctx.arc(180, 150, 26, 0, Math.PI * 2); ctx.fill();
-      /* text */
-      var n = TL.D.EPILOGUE.length;
-      if (TL.Epilogue.idx < n) {
-        var lines = TL.wrap(ctx, TL.D.EPILOGUE[TL.Epilogue.idx], 620, 10);
-        var alpha = Math.min(1, TL.Epilogue.t / 0.8);
-        for (var L = 0; L < lines.length; L++) {
-          TL.text(ctx, lines[L], TL.W / 2, 200 + L * 20, 10, TL.Epilogue.idx === 0 ? '#d8b25a' : '#c8e8dc', 'center', alpha);
+      if (TL.Epilogue.phase === 0) {
+        TL.Epilogue.stars(ctx, 41, 110);
+        /* signal wave travelling from Mars toward Earth */
+        var t = (TL.Epilogue.t * 0.3) % 1;
+        ctx.globalAlpha = (1 - t) * 0.4;
+        ctx.strokeStyle = '#7ef0c8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(TL.W - 180, TL.H - 160, 20 + t * 300, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        var mg = ctx.createRadialGradient(TL.W - 190, TL.H - 170, 5, TL.W - 180, TL.H - 160, 40);
+        mg.addColorStop(0, '#e8a070'); mg.addColorStop(1, '#8a3f28');
+        ctx.fillStyle = mg;
+        ctx.beginPath(); ctx.arc(TL.W - 180, TL.H - 160, 36, 0, Math.PI * 2); ctx.fill();
+        var eg = ctx.createRadialGradient(170, 140, 5, 180, 150, 30);
+        eg.addColorStop(0, '#7ec8f8'); eg.addColorStop(1, '#0a2a5a');
+        ctx.fillStyle = eg;
+        ctx.beginPath(); ctx.arc(180, 150, 26, 0, Math.PI * 2); ctx.fill();
+        if (TL.Epilogue.idx < TL.D.EPILOGUE.length) {
+          var alpha = Math.min(1, TL.Epilogue.t / 1.0);   /* slow, elegant fade */
+          TL.Epilogue.drawTextStage(ctx, alpha);
         }
+        TL.text(ctx, 'E / CLICK TO CONTINUE', TL.W / 2, TL.H - 60, 7, '#3a5a52', 'center');
+      } else if (TL.Epilogue.phase === 1) {
+        TL.Epilogue.drawTwilight(ctx);
       } else {
-        TL.panel(ctx, TL.W / 2 - 260, 190, 520, 150, { corner: '#7ef0c8' });
-        TL.text(ctx, 'MISSION COMPLETE', TL.W / 2, 216, 14, '#7ef0c8', 'center');
-        TL.text(ctx, 'HARDWARE DISCOVERED 12/12', TL.W / 2, 248, 9, '#d8b25a', 'center');
-        TL.text(ctx, 'BEYOND THE RED PLANET — UNLOCKED', TL.W / 2, 272, 9, '#59c8f0', 'center');
-        TL.text(ctx, 'THE ARCHIVE REMAINS OPEN. THANK YOU FOR LISTENING.', TL.W / 2, 300, 7, '#9fd8c8', 'center');
+        TL.Epilogue.drawCredits(ctx);
       }
-      TL.text(ctx, 'E / CLICK TO CONTINUE', TL.W / 2, TL.H - 60, 7, '#3a5a52', 'center');
       TL.crt(ctx, TL.Epilogue.t);
-      TL.staticOverlay(ctx, 0.05);
     }
   };
 
