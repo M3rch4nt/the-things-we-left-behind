@@ -608,8 +608,16 @@
       }
       var px = 306, py = 86;
       TL.panel(ctx, px, py, 104, 104, { corner: '#59c8f0' });
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(TL.portrait(selId), px + 4, py + 4, 96, 96);
+      /* imported photo if available, hand-drawn portrait otherwise */
+      var av2 = TL.Images ? TL.Images.avatar(selId) : null;
+      if (av2) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(av2, px + 4, py + 4, 96, 96);
+        ctx.imageSmoothingEnabled = false;
+      } else {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(TL.portrait(selId), px + 4, py + 4, 96, 96);
+      }
       TL.text(ctx, e.name, px + 120, py + 2, 13, '#d8b25a');
       TL.text(ctx, e.craft, px + 120, py + 24, 8, '#9fd8c8');
       TL.text(ctx, 'LAUNCHED: ' + e.launched, px + 120, py + 44, 7, '#6a9a8a');

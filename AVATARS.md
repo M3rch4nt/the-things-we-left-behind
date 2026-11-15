@@ -77,3 +77,11 @@ behaviour is implemented in `js/images.js`:
 The `assets/avatars/` folder already ships with NASA photography for most
 machines (from the archive set). Drop a file with the same name to replace
 any of them; keep a backup of the original if you want it back.
+
+**2026-11-15:** all twelve supplied photos are installed — eleven robot
+avatars (`viking1`, `viking2`, `pathfinder`, `sojourner`, `spirit`,
+`opportunity`, `phoenix`, `curiosity`, `insight`, `ingenuity`,
+`perseverance`, blurred photo-frame borders trimmed) plus `player.png`
+(kept as-is, clean pixel art). Both the dialogue portraits and the
+mission-archive header portraits now use the imported photos, falling
+back to the built-in pixel art if a file is missing.
