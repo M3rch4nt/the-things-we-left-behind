@@ -85,3 +85,16 @@ avatars (`viking1`, `viking2`, `pathfinder`, `sojourner`, `spirit`,
 (kept as-is, clean pixel art). Both the dialogue portraits and the
 mission-archive header portraits now use the imported photos, falling
 back to the built-in pixel art if a file is missing.
+
+**2026-11-15 (blurring "coming back after a new game") — root cause was
+browser caching, not the game.** The avatar-corruption fix in
+`js/images.js` was correct on disk, but the browser kept executing a
+stale cached copy of that file (`http.server` and GitHub Pages send
+plain cache headers, so browsers reuse old JS for a while). The old code
+re-autocropped the already-cropped canvas on concurrent portrait
+requests, collapsing avatars to a blank 8×8 that stretched into mush —
+and because the old JS stayed cached, the bug kept re-appearing even
+after "the fix", including on every new game. Fix: `index.html` now
+loads every script with a version query (`js/*.js?v=20261115a`). When
+any JS or CSS file changes, bump the `?v=` value in `index.html` so
+browsers fetch fresh code immediately (also worth a Ctrl+F5 once).
