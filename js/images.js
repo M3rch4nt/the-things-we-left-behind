@@ -89,8 +89,11 @@
         IM.cache[key] = img;
         resolve();
       };
-      img.onerror = function () { i++; headCheck(); };
-      img.src = url;
+      img.onerror = function () {
+        if (IM.MAN && IM.MAN[key]) { IM.cache[key] = 'fail'; resolve(); return; }
+        i++; headCheck();
+      };
+      img.src = url + (key.indexOf('sl:') === 0 ? '?v=20261115b' : '');
     }
     headCheck();
   }
@@ -186,7 +189,7 @@
     if (v === 'fail') return null;
     if (v) return v;
     probe(pathsFor('assets/avatars/', id), key, function (img) {
-      if (img) { var ac = IM._autocrop(img); IM.cache[key] = ac || img; }
+      if (img && img !== 'fail') { var ac = IM._autocrop(img); IM.cache[key] = ac || img; }
     });
     return null;   // first call(s) load async; pixel portrait shows meanwhile
   };

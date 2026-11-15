@@ -41,6 +41,15 @@
       D.mgQueue = (TL.D.CHAR_MG_CHAIN[charId] || (TL.D.CHAR_MG[charId] ? [TL.D.CHAR_MG[charId]] : [])).slice();
     }
     D.voiceT = 0;
+    if (TL.Images) {
+      var script = D.phase === 'post' ? D.postLines : D.lines;
+      var portraits = {};
+      script.forEach(function (line) {
+        var id = speakerOf(line.w).portrait;
+        if (!portraits[id]) TL.Images.avatar(id);
+        portraits[id] = true;
+      });
+    }
   };
 
   function speakerOf(w) {
@@ -143,9 +152,8 @@
     var textLines = line ? TL.wrap(ctx, line.t, bw - 150, 11) : ['...'];
     var bh = Math.max(150, 52 + textLines.length * 19 + 14);
     var by = TL.H - 40 - bh;
-    /* single clean semi-transparent container: flat fill + one thin border,
-       no stacked panels, no corner brackets */
-    ctx.fillStyle = 'rgba(5,16,22,0.88)';
+    /* Opaque backing stays in place as speakers change. */
+    ctx.fillStyle = '#051016';
     ctx.fillRect(bx, by, bw, bh);
     ctx.strokeStyle = 'rgba(110,220,200,0.25)';
     ctx.lineWidth = 1;
@@ -155,11 +163,15 @@
       var sp = speakerOf(line.w);
       /* portrait: user-imported avatar if provided, pixel art otherwise */
       var px = bx + 16, py = by + 16;
+      TL.rect(ctx, px, py, 96, 96, '#03090e');
       ctx.strokeStyle = sp.color;
       ctx.strokeRect(px - 4.5, py - 4.5, 103, 103);
       var av = TL.Images ? TL.Images.avatar(sp.portrait) : null;
       ctx.imageSmoothingEnabled = !!av;
-      ctx.drawImage(av || TL.portrait(sp.portrait), px, py, 96, 96);
+      if (av) ctx.drawImage(av, px, py, 96, 96);
+      else if (!TL.Images || TL.Images.cache['av:' + sp.portrait] === 'fail') {
+        ctx.drawImage(TL.portrait(sp.portrait), px, py, 96, 96);
+      }
       ctx.imageSmoothingEnabled = false;
       /* name */
       TL.text(ctx, sp.name, px + 112, by + 15, 10, sp.color);

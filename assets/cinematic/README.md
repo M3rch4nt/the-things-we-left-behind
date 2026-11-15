@@ -34,3 +34,10 @@ Extensions accepted, in order of preference:
   Refresh the page.
 - Missing files fall back to the built-in pixel-art scenes.
 - Files are served statically — works on any static host.
+
+## Outro photography
+
+- [Earth from the Martian twilight, PIA17936](https://science.nasa.gov/photojournal/bright-evening-star-seen-from-mars-is-earth/)
+- [Sunset in Gale Crater, PIA19400](https://science.nasa.gov/photojournal/sunset-in-mars-gale-crater/)
+
+Both images were taken by Curiosity and credited to NASA/JPL-Caltech/MSSS/Texas A&M University.

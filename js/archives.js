@@ -459,7 +459,8 @@
     SL.warm = { total: n, got: 0 };
     var list = [];
     for (var i = 0; i < n; i++) list.push({ key: 'sl:' + id + ':' + i, base: 'assets/archives/' + id + '/', file: 'frame' + (i + 1) });
-    TL.Images.warm(list, function () { SL.warm.got = SL.warm.total; }, function (c) { SL.warm.got = c; });
+    var warm = SL.warm;
+    TL.Images.warm(list, function () { warm.got = warm.total; }, function (c) { warm.got = c; });
     TL.audio.static(0.3, 0.05);
     TL.audio.ui();
     if (TL.G.setMode) TL.G.setMode('slides'); else TL.G.mode = 'slides';
@@ -468,7 +469,7 @@
   SL.change = function (dir) {
     var n = SL.a().slides.length;
     var s2 = TL.clamp(SL.slide + dir, 0, n - 1);
-    if (s2 === SL.slide) return;
+    if (s2 === SL.slide || SL.warm.got < SL.warm.total) return;
     /* double-buffer: snapshot the current stage so the crossfade has a
        fully rendered "old" frame underneath — never an empty gap */
     if (!SL.snap) { SL.snap = document.createElement('canvas'); SL.snap.width = V.w; SL.snap.height = V.h; }
@@ -541,15 +542,30 @@
     }
   };
 
-  /* draw the slide's visual (photo if imported, drawn art otherwise).
-     Photos render inside the fixed-aspect stage container with
-     KEEP_ASPECT_CENTERED semantics: whole frame visible, centred,
-     letterboxed onto the opaque stage fill — no cropping, no stretch,
-     and the opaque backing seals the world out. */
+  /* Keep the complete archival photo visible. Fill its spare margins with
+     a dim, softened version of itself instead of plain black bars. */
+  function drawArchivePhoto(ctx, img, x, y, w, h) {
+    var bg = img._archiveBackdrop;
+    if (!bg || bg.width !== w || bg.height !== h) {
+      bg = document.createElement('canvas');
+      bg.width = w; bg.height = h;
+      var bc = bg.getContext('2d');
+      bc.filter = 'blur(14px) brightness(0.5)';
+      TL.Images.drawCover(bc, img, -20, -20, w + 40, h + 40);
+      bc.filter = 'none';
+      bc.fillStyle = 'rgba(4,8,14,0.28)';
+      bc.fillRect(0, 0, w, h);
+      img._archiveBackdrop = bg;
+    }
+    ctx.drawImage(bg, x, y, w, h);
+    TL.Images.drawContain(ctx, img, x, y, w, h);
+  }
+
+  /* draw the slide's visual (photo if imported, drawn art otherwise). */
   function drawSlideVisual(ctx, img, w, h) {
     if (img) {
       TL.rect(ctx, 0, 0, w, h, '#04080e');
-      TL.Images.drawContain(ctx, img, 0, 0, w, h);
+      drawArchivePhoto(ctx, img, 0, 0, w, h);
       var gph = ctx.createLinearGradient(0, 0, 0, h);
       gph.addColorStop(0, 'rgba(4,10,16,0.35)'); gph.addColorStop(0.45, 'rgba(4,10,16,0)');
       gph.addColorStop(1, 'rgba(4,10,16,0.45)');
@@ -576,7 +592,9 @@
     ctx.fillStyle = 'rgba(12,16,20,0.9)'; ctx.fillRect(0, 0, TL.W, HDR_H);
     ctx.fillStyle = 'rgba(126,240,200,0.28)'; ctx.fillRect(0, HDR_H - 1, TL.W, 1);
     TL.text(ctx, 'MISSION ARCHIVE', 24, 10, 6, '#59c8f0');
-    TL.text(ctx, a.name, 24, 24, 14, ac);
+    var headerSize = 14;
+    while (TL.wrap(ctx, a.name, 700, headerSize).length > 1) headerSize--;
+    TL.text(ctx, a.name, 24, 24, headerSize, ac);
     TL.text(ctx, a.dates, 888, 24, 9, '#8a9aa8', 'right');
     TL.panel(ctx, XRECT.x, XRECT.y, XRECT.w, XRECT.h, { bg: 'rgba(40,20,14,0.92)', corner: '#f0a050' });
     TL.text(ctx, 'X', XRECT.x + 18, XRECT.y + 10, 10, '#f0a050', 'center');
@@ -589,6 +607,7 @@
     ctx.save();
     ctx.beginPath(); ctx.rect(V.x, V.y, V.w, V.h); ctx.clip();
     ctx.translate(V.x, V.y);
+    TL.rect(ctx, 0, 0, V.w, V.h, '#04080e');
     var warmDone = SL.warm.got >= SL.warm.total;
     var img = TL.Images ? TL.Images.slide(SL.id, SL.slide) : null;
     var cross = SL.trans > 0;
@@ -600,7 +619,7 @@
       ctx.globalAlpha = 1 - SL.trans / 0.35;
       drawSlideVisual(ctx, img, V.w, V.h);
       ctx.restore();
-    } else {
+    } else if (warmDone) {
       drawSlideVisual(ctx, img, V.w, V.h);
     }
 
@@ -663,7 +682,7 @@
         ctx.translate(mx, my); ctx.scale(2.4, 2.4); ctx.translate(-mx, -my);
         ctx.translate(-V.x, -V.y);
         TL.rect(ctx, V.x, V.y, V.w, V.h, '#04080e');
-        TL.Images.drawContain(ctx, img, V.x, V.y, V.w, V.h);
+        drawArchivePhoto(ctx, img, V.x, V.y, V.w, V.h);
         ctx.restore();
         /* lens rim + crosshair */
         ctx.strokeStyle = '#c8e8f8'; ctx.lineWidth = 3;

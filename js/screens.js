@@ -108,7 +108,7 @@
       TL.text(ctx, 'THIS CANNOT BE UNDONE.', cx5, 282, 7, '#8a9aa8', 'center');
       /* arm the dialog briefly so a held ENTER / E / SPACE from the menu cannot fire twice */
       var armed = Title.confirmT > 0.45;
-      var yes = button(cx5 - 220, 302, 150, 26, armed ? 'YES, ERASE [ENTER]' : 'YES, ERASE ...');
+      var yes = button(cx5 - 220, 302, 190, 26, armed ? 'YES, ERASE [ENTER]' : 'YES, ERASE ...');
       var no = button(cx5 + 70, 302, 150, 26, 'CANCEL [ESC]');
       if (no || TL.hit('escape')) { Title.confirmNew = false; TL.audio.uiBack(); return; }
       if ((yes || TL.hit('enter') || TL.hit('e') || TL.hit('space')) && armed) {
@@ -371,10 +371,14 @@
       TL.text(ctx, 'ESC · SYSTEMS', 292, 18, 6, 'rgba(140,180,170,0.4)', 'right');
       /* slim objective strip */
       var obj = TL.G.objective();
+      ctx.save();
+      ctx.font = TL.font(TL.effSize(8));
+      var objectiveWidth = Math.max(470, Math.ceil(ctx.measureText(obj).width) + 54);
+      ctx.restore();
       ctx.fillStyle = 'rgba(4,16,20,0.5)';
-      ctx.fillRect(10, TL.H - 36, 470, 26);
+      ctx.fillRect(10, TL.H - 36, objectiveWidth, 26);
       ctx.strokeStyle = 'rgba(110,220,200,0.18)';
-      ctx.strokeRect(10.5, TL.H - 35.5, 469, 25);
+      ctx.strokeRect(10.5, TL.H - 35.5, objectiveWidth - 1, 25);
       TL.text(ctx, 'OBJ', 20, TL.H - 29, 7, '#59c8f0');
       TL.text(ctx, obj, 52, TL.H - 29, 8, '#c8e8dc');
       /* low battery: calm static advisory, no flashing */
@@ -546,8 +550,8 @@
         var items = TL.S.items;
         for (var i3 = 0; i3 < items.length; i3++) {
           var col = i3 % 6, row = Math.floor(i3 / 6);
-          var x = 60 + col * 140, y3 = 120 + row * 110;
-          if (TL.mouse.x > x && TL.mouse.x < x + 120 && TL.mouse.y > y3 && TL.mouse.y < y3 + 90 && TL.mouse.clicked) { TL.Archive.itemSel = i3; TL.audio.ui(); }
+          var x = 60 + col * 140, y3 = 76 + row * 70;
+          if (TL.mouse.x > x && TL.mouse.x < x + 120 && TL.mouse.y > y3 && TL.mouse.y < y3 + 64 && TL.mouse.clicked) { TL.Archive.itemSel = i3; TL.audio.ui(); }
         }
       } else {
         for (var b4 = 0; b4 < TL.D.BEYOND_ORDER.length; b4++) {
@@ -644,25 +648,25 @@
     },
     drawItems: function (ctx) {
       var items = TL.S.items;
-      TL.text(ctx, 'RECOVERED ITEMS: ' + items.length + ' / ' + Object.keys(TL.D.ITEMS).length, 40, 70, 10, '#7ef0c8');
+      TL.text(ctx, 'RECOVERED ITEMS: ' + items.length + ' / ' + Object.keys(TL.D.ITEMS).length, 40, 60, 10, '#7ef0c8');
       if (items.length === 0) {
         TL.text(ctx, 'NOTHING RECOVERED YET — LOOK FOR GLINTING OBJECTS IN EACH REGION', TL.W / 2, 200, 8, '#3a5a52', 'center');
         return;
       }
       for (var i = 0; i < items.length; i++) {
         var col = i % 6, row = Math.floor(i / 6);
-        var x = 60 + col * 140, y = 100 + row * 110;
+        var x = 60 + col * 140, y = 76 + row * 70;
         var it = TL.D.ITEMS[items[i]];
         var sel = TL.Archive.itemSel === i;
-        TL.panel(ctx, x, y, 120, 90, { corner: sel ? '#7ef0c8' : '#3a5a52' });
-        ctx.save(); ctx.translate(x + 60, y + 34);
+        TL.panel(ctx, x, y, 120, 64, { corner: sel ? '#7ef0c8' : '#3a5a52' });
+        ctx.save(); ctx.translate(x + 60, y + 20);
         var t = performance.now();
         ctx.scale(1.6, 1.6);
         TL.drawItem(ctx, it.type, 0, 0, t);
         ctx.restore();
         var lab = TL.wrap(ctx, it.label, 108, 6);
         for (var w = 0; w < Math.min(2, lab.length); w++) {
-          TL.text(ctx, lab[w], x + 6, y + 62 + w * 9, 6, sel ? '#aef0dd' : '#7ab8a8');
+          TL.text(ctx, lab[w], x + 6, y + 38 + w * 9, 6, sel ? '#aef0dd' : '#7ab8a8');
         }
       }
       /* selected detail */
@@ -824,6 +828,11 @@
   TL.Epilogue = {
     idx: 0, t: 0, phase: 0,     /* phase 0 = narrative beats, 1 = twilight, 2 = credits */
     start: function () { TL.Epilogue.idx = 0; TL.Epilogue.t = 0; TL.Epilogue.phase = 0; },
+    photos: ['earth', 'sunset'].map(function (name) {
+      var img = new Image();
+      img.src = 'assets/cinematic/outro-' + name + '.jpg';
+      return img;
+    }),
     update: function (dt) {
       TL.Epilogue.t += dt;
       var advance = (TL.actHit() || TL.hit('space') || TL.mouse.clicked) && TL.Epilogue.t > 1.4;
@@ -835,88 +844,43 @@
           if (TL.Epilogue.idx >= TL.D.EPILOGUE.length) { TL.Epilogue.phase = 1; TL.Epilogue.t = 0; TL.audio.chime(2.2); }
         }
       } else if (TL.Epilogue.phase === 1) {
-        if (advance && TL.Epilogue.t > 4) { TL.Epilogue.phase = 2; TL.Epilogue.t = 0; }
+        if ((advance && TL.Epilogue.t > 4) || TL.Epilogue.t > 6) { TL.Epilogue.phase = 2; TL.Epilogue.t = 0; }
       } else {
-        if (advance) TL.G.finishFinale();
+        if ((advance && TL.Epilogue.t > 4) || TL.Epilogue.t > 10) TL.G.finishFinale();
       }
       if (TL.hit('escape')) TL.G.finishFinale();
-    },
-    /* --- shared scenic backdrops --- */
-    stars: function (ctx, seed, n) {
-      var rr = TL.RNG(seed);
-      for (var i = 0; i < n; i++) {
-        ctx.globalAlpha = 0.15 + 0.6 * Math.abs(Math.sin(TL.Epilogue.t * 0.5 + i));
-        ctx.fillStyle = '#c8d8e8';
-        ctx.fillRect(rr() * TL.W | 0, rr() * TL.H * 0.55 | 0, 2, 2);
-      }
-      ctx.globalAlpha = 1;
     },
     drawTextStage: function (ctx, alpha) {
       /* BIG_TEXT keeps the ending at full size (no small-text shrink) */
       TL.BIG_TEXT = true;
       var lines = TL.wrap(ctx, TL.D.EPILOGUE[TL.Epilogue.idx], 700, 12);
-      TL.BIG_TEXT = false;
       var y0 = TL.H / 2 - (lines.length * 24) / 2 + 10;
       for (var L = 0; L < lines.length; L++) {
         TL.text(ctx, lines[L], TL.W / 2, y0 + L * 24, 12, TL.Epilogue.idx === 0 ? '#d8b25a' : '#cfeadd', 'center', alpha);
       }
+      TL.BIG_TEXT = false;
     },
-    /* the closing vista: a solitary rover beneath a pale-blue Martian sunset */
+    drawPhoto: function (ctx, index, zoom, shade) {
+      var img = TL.Epilogue.photos[index];
+      if (img.naturalWidth) {
+        var inset = zoom * 22;
+        TL.Images.drawCover(ctx, img, -inset, -inset, TL.W + inset * 2, TL.H + inset * 2);
+      }
+      var vignette = ctx.createLinearGradient(0, 0, 0, TL.H);
+      vignette.addColorStop(0, 'rgba(2,6,10,0.24)');
+      vignette.addColorStop(0.52, 'rgba(2,6,10,' + shade + ')');
+      vignette.addColorStop(1, 'rgba(2,6,10,0.88)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, TL.W, TL.H);
+    },
     drawTwilight: function (ctx) {
-      var a = Math.min(1, TL.Epilogue.t / 1.6);   /* slow, smooth fade-in */
-      ctx.save();
-      ctx.globalAlpha = a;
-      /* dusky sky: ashen above, pale blue glow low — Mars sunsets are blue */
-      var g = ctx.createLinearGradient(0, 0, 0, TL.H);
-      g.addColorStop(0, '#241b1e'); g.addColorStop(0.55, '#3a2c2e');
-      g.addColorStop(0.78, '#5c6a80'); g.addColorStop(0.9, '#8fa8c0'); g.addColorStop(1, '#5a6a80');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, TL.W, TL.H);
-      TL.Epilogue.stars(ctx, 23, 60);
-      /* the pale blue sun, low on the horizon */
-      var sx = TL.W * 0.5, sy = TL.H - 96;
-      var glow = ctx.createRadialGradient(sx, sy, 2, sx, sy, 130);
-      glow.addColorStop(0, 'rgba(220,235,255,0.85)'); glow.addColorStop(0.25, 'rgba(150,185,220,0.35)'); glow.addColorStop(1, 'rgba(150,185,220,0)');
-      ctx.fillStyle = glow; ctx.fillRect(sx - 140, sy - 140, 280, 280);
-      ctx.fillStyle = '#e6f0fb';
-      ctx.beginPath(); ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fill();
-      /* hills, then the plain */
-      ctx.fillStyle = '#2c1d18';
-      ctx.beginPath(); ctx.moveTo(0, TL.H - 78); ctx.lineTo(180, TL.H - 118); ctx.lineTo(420, TL.H - 84);
-      ctx.lineTo(700, TL.H - 122); ctx.lineTo(TL.W, TL.H - 88); ctx.lineTo(TL.W, TL.H); ctx.lineTo(0, TL.H); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#241713'; ctx.fillRect(0, TL.H - 66, TL.W, 66);
-      /* the rover, small and solitary, facing the light */
-      ctx.save();
-      ctx.translate(TL.W * 0.36, TL.H - 64);
-      ctx.scale(0.85, 0.85);
-      TL.drawRobot(ctx, 0, 0, 1, 'idle', TL.Epilogue.t * 0.12, {});
-      ctx.restore();
-      /* long evening shadow toward the viewer */
-      ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#120c0a';
-      ctx.beginPath(); ctx.ellipse(TL.W * 0.36 + 26, TL.H - 58, 60, 7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      /* drifting dust, lit faintly blue */
-      var rr = TL.RNG(9);
-      for (var i = 0; i < 26; i++) {
-        var dx = (rr() * TL.W + TL.Epilogue.t * 8 * (0.4 + rr())) % TL.W;
-        ctx.globalAlpha = a * (0.1 + rr() * 0.2);
-        ctx.fillStyle = '#aebfd4';
-        ctx.fillRect(dx | 0, (TL.H - 90 + rr() * 60) | 0, 2, 1);
-      }
-      ctx.restore();
-      /* closing line over the scene */
-      var alpha = Math.min(1, Math.max(0, (TL.Epilogue.t - 1.6) / 1.2));
-      if (alpha > 0) {
-        TL.text(ctx, 'The torch is lit. Keep going.', TL.W / 2, TL.H - 190, 11, '#cfe2f0', 'center', alpha);
-      }
+      TL.Epilogue.drawPhoto(ctx, 1, Math.min(1, TL.Epilogue.t / 6), 0.45);
+      var alpha = TL.clamp((TL.Epilogue.t - 0.8) / 1.2, 0, 1);
+      TL.text(ctx, 'The torch is lit. Keep going.', TL.W / 2, TL.H - 110, 11, '#cfe2f0', 'center', alpha);
     },
     drawCredits: function (ctx) {
-      TL.Epilogue.drawTwilight(ctx);
+      TL.Epilogue.drawPhoto(ctx, 1, 1, 0.85);
       var a = Math.min(1, TL.Epilogue.t / 1.4);
-      ctx.save();
-      ctx.globalAlpha = a * 0.86;
-      ctx.fillStyle = 'rgba(3,6,10,0.82)';
-      ctx.fillRect(0, 0, TL.W, TL.H);
-      ctx.restore();
       var pulse = 0.85 + 0.15 * Math.sin(TL.Epilogue.t * 1.2);
       TL.text(ctx, 'THE THINGS WE LEFT BEHIND', TL.W / 2, 168, 22, '#7ef0c8', 'center', a * pulse);
       TL.rect(ctx, TL.W / 2 - 150, 214, 300, 1, 'rgba(126,240,200,0.35)');
@@ -935,26 +899,12 @@
       for (var i = 0; i < credits.length; i++) {
         TL.text(ctx, credits[i], TL.W / 2, 250 + i * 22, 9, i === 0 ? '#d8b25a' : '#9fd8c8', 'center', a);
       }
-      TL.text(ctx, 'E TO RETURN TO THE SURFACE', TL.W / 2, TL.H - 56, 7, '#3a5a52', 'center', a);
+      TL.text(ctx, 'E TO OPEN DEEP SPACE', TL.W / 2, TL.H - 56, 7, '#3a5a52', 'center', a);
     },
     draw: function (ctx) {
       ctx.fillStyle = '#02060a'; ctx.fillRect(0, 0, TL.W, TL.H);
       if (TL.Epilogue.phase === 0) {
-        TL.Epilogue.stars(ctx, 41, 110);
-        /* signal wave travelling from Mars toward Earth */
-        var t = (TL.Epilogue.t * 0.3) % 1;
-        ctx.globalAlpha = (1 - t) * 0.4;
-        ctx.strokeStyle = '#7ef0c8'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(TL.W - 180, TL.H - 160, 20 + t * 300, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 1;
-        var mg = ctx.createRadialGradient(TL.W - 190, TL.H - 170, 5, TL.W - 180, TL.H - 160, 40);
-        mg.addColorStop(0, '#e8a070'); mg.addColorStop(1, '#8a3f28');
-        ctx.fillStyle = mg;
-        ctx.beginPath(); ctx.arc(TL.W - 180, TL.H - 160, 36, 0, Math.PI * 2); ctx.fill();
-        var eg = ctx.createRadialGradient(170, 140, 5, 180, 150, 30);
-        eg.addColorStop(0, '#7ec8f8'); eg.addColorStop(1, '#0a2a5a');
-        ctx.fillStyle = eg;
-        ctx.beginPath(); ctx.arc(180, 150, 26, 0, Math.PI * 2); ctx.fill();
+        TL.Epilogue.drawPhoto(ctx, 0, TL.clamp((TL.Epilogue.idx + TL.Epilogue.t / 7) / TL.D.EPILOGUE.length, 0, 1), 0.72);
         if (TL.Epilogue.idx < TL.D.EPILOGUE.length) {
           var alpha = Math.min(1, TL.Epilogue.t / 1.0);   /* slow, elegant fade */
           TL.Epilogue.drawTextStage(ctx, alpha);

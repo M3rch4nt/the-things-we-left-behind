@@ -150,11 +150,18 @@
   };
 
   G.finishFinale = function () {
+    if (G.fade) return;
     TL.S.finaleDone = true;
     TL.save();
-    G.setMode('play');
-    TL.toast('BEYOND THE RED PLANET — UNLOCKED IN ARCHIVE', '#59c8f0', true);
-    TL.toast('FREE EXPLORATION — THE ARCHIVE REMAINS OPEN', '#7ef0c8');
+    G.fade = {
+      t: 0, phase: 'out',
+      cb: function () {
+        TL.Archive.tab = 'beyond';
+        TL.Archive.beyondSel = 0;
+        G.pauseReturn = 'play';
+        G.setMode('archive');
+      }
+    };
   };
 
   /* ---------- objective ---------- */

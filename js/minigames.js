@@ -83,16 +83,24 @@
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, 82, TL.W, 2);
     ctx.globalAlpha = 0.7; ctx.fillStyle = ac; ctx.fillRect(0, 84, TL.W, 2); ctx.globalAlpha = 1;
     /* instrument tag chip */
-    var tw = th.tag.length * 6 + 16;
+    ctx.save();
+    ctx.font = TL.font(TL.effSize(6));
+    var tw = Math.ceil(ctx.measureText(th.tag).width) + 20;
+    ctx.restore();
     ctx.fillStyle = 'rgba(16,28,34,0.95)'; ctx.fillRect(34, 8, tw, 14);
     ctx.strokeStyle = ac; ctx.lineWidth = 1; ctx.strokeRect(34.5, 8.5, tw - 1, 13);
     TL.text(ctx, th.tag, 42, 11, 6, ac);
     /* title + prompt */
-    TL.text(ctx, title, 48, 30, 11, ac);
-    TL.text(ctx, prompt, 48, 48, 8, '#9fd8c8');
+    var titleSize = 11;
+    while (TL.wrap(ctx, title, TL.W - 300, titleSize).length > 1) titleSize--;
+    TL.text(ctx, title, 48, 30, titleSize, ac);
+    var promptLines = TL.wrap(ctx, prompt, TL.W - 96, 8);
+    for (var p = 0; p < promptLines.length; p++) {
+      TL.text(ctx, promptLines[p], 48, 51 + p * 13, 8, '#9fd8c8');
+    }
     /* single calm, static status line — no LEDs, no dial, no blinker */
-    TL.text(ctx, 'SYS NOMINAL', TL.W - 26, 34, 6, 'rgba(126,240,200,0.55)', 'right');
-    TL.text(ctx, th.sub, TL.W - 26, 48, 6, '#7ab8a8', 'right');
+    TL.text(ctx, 'SYS NOMINAL', TL.W - 26, 11, 6, 'rgba(126,240,200,0.55)', 'right');
+    TL.text(ctx, th.sub, TL.W - 26, 32, 6, '#7ab8a8', 'right');
   }
 
   function button(ctx, x, y, w, h, label, hot, active) {
@@ -258,7 +266,7 @@
           var hov = TL.mouse.x >= cxx && TL.mouse.x <= cxx + cw && TL.mouse.y >= cyy && TL.mouse.y <= cyy + ch;
           TL.panel(ctx, cxx, cyy, cw, ch, { bg: 'rgba(10,26,32,0.92)', corner: selIdx === i ? '#f0a050' : hov ? '#7ef0c8' : '#3a7a6a' });
           TL.text(ctx, (i + 1) + '.', cxx + 8, cyy + 8, 8, '#5a8a7a');
-          TL.text(ctx, chips[i].title, cxx + 26, cyy + 8, 9, '#d8b25a');
+          TL.text(ctx, chips[i].title, cxx + 42, cyy + 8, 9, '#d8b25a');
           var lines = TL.wrap(ctx, chips[i].sub, cw - 20, 7);
           for (var L = 0; L < Math.min(lines.length, 4); L++) {
             TL.text(ctx, lines[L], cxx + 8, cyy + 26 + L * 12, 7, '#9fd8c8');

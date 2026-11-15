@@ -236,7 +236,7 @@
     },
     {
       /* WORLD 02 — Pathfinder & Sojourner, 1997 */
-      id: 'ares', name: 'WORLD 02', region: 'ARES VALLIS', year: '1997', sub: 'PATHFINDER & SOJOURNER', w: 5600, rugged: 0.5,
+      id: 'ares', name: 'WORLD 02', region: 'ARES VALLIS', year: '1997', sub: 'PATHFINDER & SOJOURNER', w: 4900, rugged: 0.5,
       theme: { skyA: '#c86a3c', skyB: '#8a3f28', sun: '#ffd9a0', far: '#6d2f22', mid: '#93472f', ground: '#b56536', groundDark: '#7e3f22', rock: '#8a4a30', rockHi: '#c07a4a', dust: '#e8a070', stars: false },
       objective: 'MEET THE FIRST EXPLORERS',
       ents: [
@@ -245,9 +245,8 @@
         { type: 'station', x: 700 },
         { type: 'station', x: 3200 },
         { type: 'pit', x: 3550, w: 96 },
-        { type: 'pit', x: 4300, w: 88 },
         { type: 'exit', dir: -1, x: 40, to: 'chryse' },
-        { type: 'exit', dir: 1, x: 5560, to: 'gusev' }
+        { type: 'exit', dir: 1, x: 4860, to: 'gusev' }
       ],
       items: ['ares_patch', 'ares_photo', 'ares_note']
     },
