@@ -58,9 +58,10 @@
     var i = 0;
     function resolve() {
       delete IM.probing[key];
-      var ws = waiters[key] || [];
+      var val = IM.cache[key];   // captured ONCE: later waiters must not see
+      var ws = waiters[key] || [];   // a callback's overwritten cache entry
       delete waiters[key];
-      for (var w = 0; w < ws.length; w++) ws[w](IM.cache[key]);
+      for (var w = 0; w < ws.length; w++) ws[w](val);
     }
     function headCheck() {
       /* manifest is authoritative: exact path or confirmed absence.
@@ -105,11 +106,13 @@
      2. crop it, then centre-crop to a square
      3. downscale to <= 240px */
   IM._autocrop = function (img) {
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return null;   // broken/undecoded source — never fabricate a canvas
     var cv = document.createElement('canvas');
-    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.width = iw; cv.height = ih;
     var c = cv.getContext('2d');
     c.drawImage(img, 0, 0);
-    var w = cv.width, h = cv.height, box;
+    var w = iw, h = ih, box;
     try {
       var d = c.getImageData(0, 0, w, h).data;
       function px(x, y) { var o = (y * w + x) * 4; return [d[o], d[o + 1], d[o + 2]]; }
@@ -183,7 +186,7 @@
     if (v === 'fail') return null;
     if (v) return v;
     probe(pathsFor('assets/avatars/', id), key, function (img) {
-      if (img) IM.cache[key] = IM._autocrop(img);
+      if (img) { var ac = IM._autocrop(img); IM.cache[key] = ac || img; }
     });
     return null;   // first call(s) load async; pixel portrait shows meanwhile
   };
