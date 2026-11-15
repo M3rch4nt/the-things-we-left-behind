@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>THE THINGS WE LEFT BEHIND</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261115a">
+<link rel="stylesheet" href="css/style.css?v=20261115mobile">
 </head>
 <body>
 <div id="app">
@@ -24,12 +24,7 @@
         <canvas id="game" width="960" height="540"></canvas>
         <div id="scanlines"></div>
         <div id="glass"></div>
-        <div id="touch">
-          <button class="tbtn" id="t-left">◀</button>
-          <button class="tbtn" id="t-right">▶</button>
-          <button class="tbtn" id="t-jump">▲</button>
-          <button class="tbtn t-e" id="t-act">E</button>
-        </div>
+
       </div>
       <div class="bezel-right">
         <div class="led led-pwr on" title="POWER"></div>
@@ -45,20 +40,38 @@
       <div class="screw s3"></div>
     </div>
   </div>
-  <div id="footer">THE THINGS WE LEFT BEHIND — AN INTERACTIVE EXPERIENCE BY MAI TEAM · KEYBOARD RECOMMENDED</div>
+  <nav id="touch" aria-label="Game controls">
+    <div class="touch-tools">
+      <button data-key="escape" id="t-back">Back</button>
+      <button id="t-mute">Mute</button>
+      <button id="t-zoom" aria-pressed="false">Enlarge</button>
+      <button data-key="m" id="t-lens" hidden>Lens</button>
+      <button data-key="s" id="t-scan" hidden>Scan</button>
+    </div>
+    <div class="touch-pad">
+      <button data-key="arrowleft" aria-label="Move left">◀</button>
+      <button data-key="arrowup" aria-label="Up">▲</button>
+      <button data-key="arrowdown" aria-label="Down">▼</button>
+      <button data-key="arrowright" aria-label="Move right">▶</button>
+      <button data-key="space" id="t-jump">Jump</button>
+      <button data-key="e" id="t-act">Select</button>
+    </div>
+    <p id="touch-help">Tap to select. Hold arrows to move. Turn sideways for a larger view.</p>
+  </nav>
+  <div id="footer">THE THINGS WE LEFT BEHIND — AN INTERACTIVE EXPERIENCE BY MAI TEAM · KEYBOARD & TOUCH</div>
 </div>
-<script src="js/core.js?v=20261115a"></script>
-<script src="js/images.js?v=20261115c"></script>
-<script src="js/audio.js?v=20261115a"></script>
+<script src="js/core.js?v=20261115mobile"></script>
+<script src="js/images.js?v=20261115hosted"></script>
+<script src="js/audio.js?v=20261115mobile"></script>
 <script src="js/data.js?v=20261115c"></script>
-<script src="js/sprites.js?v=20261115a"></script>
-<script src="js/archiveArt.js?v=20261115a"></script>
+<script src="js/sprites.js?v=20261115mobile"></script>
+<script src="js/archiveArt.js?v=20261115mobile"></script>
 <script src="js/archives.js?v=20261115c"></script>
-<script src="js/world.js?v=20261115a"></script>
-<script src="js/player.js?v=20261115a"></script>
+<script src="js/world.js?v=20261115mobile"></script>
+<script src="js/player.js?v=20261115mobile"></script>
 <script src="js/dialogue.js?v=20261115c"></script>
-<script src="js/minigames.js?v=20261115c"></script>
-<script src="js/screens.js?v=20261115d"></script>
-<script src="js/main.js?v=20261115c"></script>
+<script src="js/minigames.js?v=20261115mobile"></script>
+<script src="js/screens.js?v=20261115hosted"></script>
+<script src="js/main.js?v=20261115mobile"></script>
 </body>
 </html>

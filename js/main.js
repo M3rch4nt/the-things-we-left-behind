@@ -226,7 +226,7 @@
     TL.S.playtime = (TL.S.playtime || 0) + dt;
     TL.Notify.update(dt);
     /* global mute key */
-    if (TL.hit('m') && G.mode !== 'settings') {
+    if (TL.hit('m') && G.mode !== 'settings' && G.mode !== 'slides') {
       TL.S.settings.mute = !TL.S.settings.mute;
       TL.audio.applySettings();
       TL.toast(TL.S.settings.mute ? 'AUDIO MUTED [M]' : 'AUDIO ON [M]');
@@ -240,7 +240,7 @@
       case 'cinematic': TL.Cinematic.update(dt); break;
       case 'slides': TL.Slides.update(dt); break;
       case 'play':
-        if (TL.hit('escape') && !TL.Dialogue.active) { G.openPause(); break; }
+        if (TL.hit('escape')) { G.openPause(); break; }
         if (TL.Dialogue.active) {
           TL.Dialogue.update(dt);
         } else if (TL.Player.p) {
@@ -299,6 +299,7 @@
     try {
       G.update(dt);
       G.draw(TL.ctx);
+      TL.updateTouch();
     } catch (e) {
       /* fail loud in console but keep loop */
       console.error(e);

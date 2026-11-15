@@ -541,7 +541,8 @@
         }
         /* ENTER opens the mission archive of the selected, discovered hardware */
         var hwId = entries[TL.Archive.sel];
-        if (hwId && TL.discovered(hwId) && (TL.hit('enter') || TL.hit('e'))) {
+        var openTapped = TL.mouse.clicked && TL.mouse.x >= 310 && TL.mouse.x <= 570 && TL.mouse.y >= 452 && TL.mouse.y <= 478;
+        if (hwId && TL.discovered(hwId) && (TL.hit('enter') || TL.hit('e') || openTapped)) {
           TL.audio.ui();
           TL.Slides.open(hwId, 'archive');
           return;
@@ -830,7 +831,7 @@
     start: function () { TL.Epilogue.idx = 0; TL.Epilogue.t = 0; TL.Epilogue.phase = 0; },
     photos: ['earth', 'sunset'].map(function (name) {
       var img = new Image();
-      img.src = 'assets/cinematic/outro-' + name + '.jpg';
+      img.src = TL.Images.url('assets/cinematic/outro-' + name + '.jpg');
       return img;
     }),
     update: function (dt) {

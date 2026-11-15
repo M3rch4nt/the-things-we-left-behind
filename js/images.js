@@ -18,23 +18,27 @@
 'use strict';
 (function (TL) {
 
+  /* Resolve assets from this script's directory, not the page URL. This also
+     works when a web viewer serves index.html from a different URL. */
+  var projectRoot = new URL('../', document.currentScript.src);
   var IM = TL.Images = {
     cache: {},     // key -> canvas | img | 'fail'
     probing: {},   // key -> true while loading
     EXT: ['jpg', 'png', 'jpeg', 'webp'],
-    MAN: null      // optional manifest (flat key -> path); null until checked
+    MAN: null      // null while loading, false if unavailable, object when loaded
   };
+  IM.url = function (path) { return new URL(path, projectRoot).href; };
 
   /* optional manifest: if assets/manifest.json exists it lists every
      available image (see tools/genmanifest.js) and probing becomes
      exact — zero 404 console noise. Without it, extension probing
      is used, which can log harmless 404s for missing optional files. */
   if (typeof fetch === 'function' && location.protocol !== 'file:') {
-    fetch('assets/manifest.json').then(function (r) { return r.ok ? r.json() : {}; })
-      .then(function (j) { IM.MAN = (j && typeof j === 'object') ? j : {}; })
-      .catch(function () { IM.MAN = {}; });
+    fetch(IM.url('assets/manifest.json')).then(function (r) { return r.ok ? r.json() : false; })
+      .then(function (j) { IM.MAN = (j && typeof j === 'object') ? j : false; })
+      .catch(function () { IM.MAN = false; });
   } else {
-    IM.MAN = {};
+    IM.MAN = false;
   }
 
   /* try candidate paths in order, first success wins.
@@ -55,7 +59,7 @@
     waiters[key].push(done);
     if (IM.probing[key]) return;              // already in flight; it will flush the queue
     IM.probing[key] = true;
-    var i = 0;
+    var i = 0, manifestTried = false;
     function resolve() {
       delete IM.probing[key];
       var val = IM.cache[key];   // captured ONCE: later waiters must not see
@@ -64,17 +68,15 @@
       for (var w = 0; w < ws.length; w++) ws[w](val);
     }
     function headCheck() {
-      /* manifest is authoritative: exact path or confirmed absence.
-         (Browsers log every probed 404 in the console, so silent
-         network probing is not possible; the manifest keeps the
-         console clean once your images are indexed.) */
-      if (IM.MAN) {
+      /* Prefer the indexed path, but probe the files if the index is absent
+         or stale (including when the page is opened from a local folder). */
+      if (!manifestTried && IM.MAN) {
+        manifestTried = true;
         var mp = IM.MAN[key];
         if (mp) { loadImg(mp); return; }
-        IM.cache[key] = 'fail'; resolve(); return;
       }
       if (i >= paths.length) { IM.cache[key] = 'fail'; resolve(); return; }
-      var url = paths[i];
+      var url = IM.url(paths[i]);
       if (typeof fetch === 'function' && location.protocol !== 'file:') {
         fetch(url, { method: 'HEAD' }).then(function (res) {
           if (res.ok) loadImg(url); else { i++; headCheck(); }
@@ -90,10 +92,9 @@
         resolve();
       };
       img.onerror = function () {
-        if (IM.MAN && IM.MAN[key]) { IM.cache[key] = 'fail'; resolve(); return; }
         i++; headCheck();
       };
-      img.src = url + (key.indexOf('sl:') === 0 ? '?v=20261115b' : '');
+      img.src = IM.url(url) + (key.indexOf('sl:') === 0 ? '?v=20261115b' : '');
     }
     headCheck();
   }

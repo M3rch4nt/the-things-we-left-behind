@@ -17,28 +17,60 @@ window.TL = window.TL || {};
   TL.ctx = TL.canvas.getContext('2d');
   TL.ctx.imageSmoothingEnabled = false;
 
-  /* fit whole chassis to viewport via CSS scale */
+  /* Fit the canvas separately from unscaled mobile controls. */
   TL.fitLayout = function () {
     var mon = document.getElementById('monitor');
-    var need = 1060 / window.innerWidth;
-    var needH = 720 / window.innerHeight;
-    var s = Math.min(1, 1 / Math.max(need, needH));
-    mon.style.setProperty('--s', s.toFixed(3));
-    document.body.classList.toggle('touch', ('ontouchstart' in window) || navigator.maxTouchPoints > 0);
+    var touch = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+    document.body.classList.toggle('touch', touch);
+    if (touch) {
+      var app = document.getElementById('app'), style = getComputedStyle(app);
+      var width = app.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      var height = app.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+        - document.getElementById('touch').offsetHeight - 8;
+      if (window.matchMedia('(max-height:540px) and (orientation:landscape)').matches) {
+        width -= 224;
+        height = app.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 8;
+      }
+      height = Math.max(90, height);
+      mon.style.setProperty('--game-width', Math.min(width, height * 16 / 9, 960) + 'px');
+      mon.style.setProperty('--game-height', height + 'px');
+    } else {
+      var s = Math.min(1, window.innerWidth / 1080, window.innerHeight / 720);
+      mon.style.setProperty('--s', s.toFixed(3));
+    }
   };
   window.addEventListener('resize', TL.fitLayout);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', TL.fitLayout);
   TL.fitLayout();
 
-  /* pointer position mapped into canvas space */
+  /* Pointer capture supports touch dragging, held thrust, and release outside canvas. */
   TL.mouse = { x: 0, y: 0, down: false, clicked: false, released: false };
   TL._mapPointer = function (e) {
     var r = TL.canvas.getBoundingClientRect();
     TL.mouse.x = (e.clientX - r.left) * (TL.W / r.width);
     TL.mouse.y = (e.clientY - r.top) * (TL.H / r.height);
   };
-  TL.canvas.addEventListener('mousemove', function (e) { TL._mapPointer(e); });
-  TL.canvas.addEventListener('mousedown', function (e) { TL._mapPointer(e); TL.mouse.down = true; TL.mouse.clicked = true; });
-  TL.canvas.addEventListener('mouseup', function (e) { TL._mapPointer(e); TL.mouse.down = false; TL.mouse.released = true; });
+  var canvasPointer = null;
+  TL.canvas.addEventListener('pointerdown', function (e) {
+    if (canvasPointer !== null || e.button !== 0) return;
+    canvasPointer = e.pointerId;
+    TL.canvas.setPointerCapture(e.pointerId);
+    TL._mapPointer(e);
+    TL.mouse.down = true; TL.mouse.clicked = true;
+    if (TL.audio) TL.audio.unlock();
+  });
+  TL.canvas.addEventListener('pointermove', function (e) {
+    if (canvasPointer === e.pointerId || (canvasPointer === null && e.pointerType === 'mouse')) TL._mapPointer(e);
+  });
+  function releasePointer(e) {
+    if (canvasPointer !== e.pointerId) return;
+    if (e.type === 'pointerup') { TL._mapPointer(e); TL.mouse.released = true; }
+    TL.mouse.down = false;
+    canvasPointer = null;
+  }
+  TL.canvas.addEventListener('pointerup', releasePointer);
+  TL.canvas.addEventListener('pointercancel', releasePointer);
+  TL.canvas.addEventListener('lostpointercapture', releasePointer);
   TL.canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   /* ---------- input ---------- */
@@ -61,7 +93,8 @@ window.TL = window.TL || {};
     TL.keys[TL.keyName(e)] = false;
   });
 
-  TL.key = function (k) { return !!TL.keys[k]; };
+  TL.touchKeys = {};
+  TL.key = function (k) { return !!TL.keys[k] || !!TL.touchKeys[k]; };
   TL.hit = function (k) { return !!TL.pressed[k]; };
   /* virtual keys from touch buttons */
   TL.virt = { left: false, right: false, jump: false, act: false };
@@ -70,21 +103,69 @@ window.TL = window.TL || {};
   TL.jumpHit = function () { return TL.hit('space') || TL.hit('w') || TL.hit('arrowup') || TL.virt.jumpHit; };
   TL.actHit = function () { return TL.hit('e') || TL.hit('enter') || TL.virt.actHit; };
 
+  var resetButtons = [];
   (function bindTouch() {
-    function hold(id, down, up) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('touchstart', function (e) { e.preventDefault(); down(); }, { passive: false });
-      el.addEventListener('touchend', function (e) { e.preventDefault(); up(); }, { passive: false });
-      el.addEventListener('touchcancel', up);
-      el.addEventListener('mousedown', down);
-      el.addEventListener('mouseup', up);
-    }
-    hold('t-left', function () { TL.virt.left = true; }, function () { TL.virt.left = false; });
-    hold('t-right', function () { TL.virt.right = true; }, function () { TL.virt.right = false; });
-    hold('t-jump', function () { TL.virt.jump = true; TL.virt.jumpHit = true; }, function () { TL.virt.jump = false; TL.virt.jumpHit = false; });
-    hold('t-act', function () { TL.virt.act = true; TL.virt.actHit = true; }, function () { TL.virt.act = false; TL.virt.actHit = false; });
+    document.querySelectorAll('#touch [data-key]').forEach(function (el) {
+      var pointer = null, key = el.dataset.key;
+      resetButtons.push(function () { pointer = null; });
+      el.addEventListener('pointerdown', function (e) {
+        if (pointer !== null || e.button !== 0) return;
+        e.preventDefault();
+        pointer = e.pointerId; el.setPointerCapture(pointer);
+        TL.touchKeys[key] = true; TL.pressed[key] = true;
+        el.classList.add('held');
+        if (key === 'space') TL.virt.jump = true;
+        if (TL.audio) TL.audio.unlock();
+      });
+      function release(e) {
+        if (e.pointerId !== pointer) return;
+        pointer = null; TL.touchKeys[key] = false;
+        if (key === 'space') TL.virt.jump = false;
+        el.classList.remove('held');
+      }
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (event) { el.addEventListener(event, release); });
+      // Also support keyboard / assistive activation of the native buttons.
+      el.addEventListener('click', function (e) { if (e.detail === 0) TL.pressed[key] = true; });
+    });
+    document.getElementById('t-mute').addEventListener('click', function () {
+      TL.audio.unlock(); TL.S.settings.mute = !TL.S.settings.mute;
+      TL.audio.applySettings(); TL.save();
+    });
+    document.getElementById('t-zoom').addEventListener('click', function () {
+      var on = document.body.classList.toggle('zoomed');
+      this.textContent = on ? 'Fit view' : 'Enlarge';
+      this.setAttribute('aria-pressed', String(on));
+      document.getElementById('touch-help').textContent = on ?
+        'Swipe to read the enlarged view. Use Fit view for dragging and action games.' :
+        'Tap to select. Hold arrows to move. Turn sideways for a larger view.';
+      TL.fitLayout();
+    });
   })();
+
+  TL.clearInput = function () {
+    TL.keys = {}; TL.touchKeys = {}; TL.pressed = {};
+    TL.virt = {}; TL.mouse.down = false; TL.mouse.clicked = false; TL.mouse.released = false;
+    canvasPointer = null;
+    resetButtons.forEach(function (reset) { reset(); });
+    document.querySelectorAll('#touch .held').forEach(function (el) { el.classList.remove('held'); });
+  };
+  window.addEventListener('blur', TL.clearInput);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) TL.clearInput(); });
+
+  var lastTouchMode = '';
+  TL.updateTouch = function () {
+    var mode = TL.G.mode, slides = mode === 'slides';
+    document.getElementById('t-mute').textContent = TL.S.settings.mute ? 'Unmute' : 'Mute';
+    if (lastTouchMode === mode) return;
+    lastTouchMode = mode;
+    document.getElementById('t-back').textContent = mode === 'cinematic' ? 'Skip intro' :
+      (mode === 'play' || mode === 'minigame' ? 'Pause' : 'Back');
+    document.getElementById('t-jump').textContent = mode === 'play' ? 'Jump' : slides ? 'Prev' : 'Fire';
+    document.getElementById('t-act').textContent = mode === 'play' ? 'Interact' : slides ? 'Next' : 'Select';
+    document.getElementById('t-lens').hidden = !slides;
+    document.getElementById('t-scan').hidden = !slides;
+    TL.fitLayout();
+  };
 
   TL.endFrame = function () { TL.pressed = {}; TL.mouse.clicked = false; TL.mouse.released = false; TL.virt.jumpHit = false; TL.virt.actHit = false; TL.anyKey = false; };
 

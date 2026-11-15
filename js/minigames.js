@@ -677,7 +677,7 @@
           if (TL.hit('space') || TL.mouse.clicked) started = true;
           return;
         }
-        var thrust = TL.keys['space'] || TL.mouse.down;
+        var thrust = TL.key('space') || TL.mouse.down;
         vy += (thrust ? -620 : 560) * dt;
         vy = TL.clamp(vy, -180, 200);
         cy += vy * dt;
